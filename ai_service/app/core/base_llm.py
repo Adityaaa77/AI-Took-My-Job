@@ -25,7 +25,8 @@ class BaseSLMProvider(ABC):
         self, 
         prompt: str, 
         response_schema: Type[BaseModel], 
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        example_instance: Optional[Dict[str, Any]] = None
     ) -> BaseModel:
         """
         Generate structured response validated against a given Pydantic model schema.
@@ -33,6 +34,7 @@ class BaseSLMProvider(ABC):
         :param prompt: User or agent prompt string.
         :param response_schema: Pydantic model class to validate output against.
         :param system_prompt: System prompt setting context/formatting rules.
+        :param example_instance: Optional agent-specific example dict guiding template shape.
         :return: Instantiated & validated Pydantic model object.
         """
         pass

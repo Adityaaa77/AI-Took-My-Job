@@ -27,6 +27,7 @@ class OllamaProvider(BaseSLMProvider):
     async def generate(self, prompt: str, system_prompt: Optional[str] = None, format_json: bool = False) -> str:
         """
         Send completion request to Ollama /api/generate REST endpoint.
+        Uses greedy sampling (temperature=0.0) for structured JSON requests to prevent GBNF token rejection loops.
         """
         url = f"{self.base_url.rstrip('/')}/api/generate"
         payload = {
@@ -34,7 +35,9 @@ class OllamaProvider(BaseSLMProvider):
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": settings.SLM_TEMPERATURE
+                "temperature": 0.0 if format_json else settings.SLM_TEMPERATURE,
+                "num_predict": 250, # Cap generation length for structured findings
+                "num_ctx": 2048     # Keep context size bounded for fast CPU inference
             }
         }
         if format_json:
@@ -76,20 +79,49 @@ class OllamaProvider(BaseSLMProvider):
         self, 
         prompt: str, 
         response_schema: Type[BaseModel], 
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        example_instance: Optional[Dict[str, Any]] = None
     ) -> BaseModel:
         """
         Request JSON format response from Ollama and validate output against Pydantic schema.
-        Uses native Ollama JSON decoding mode for fast, preamble-free generation.
+        Uses native Ollama JSON decoding mode + prompt initiation suffix to trigger immediate JSON token generation.
         """
-        schema_json = json.dumps(response_schema.model_json_schema())
-        formatting_instructions = (
-            f"\n\nOutput MUST be valid JSON adhering to schema:\n{schema_json}"
-        )
-        full_system = f"{system_prompt}\n{formatting_instructions}" if system_prompt else formatting_instructions
+        if example_instance:
+            example_dict = example_instance
+        else:
+            # Fallback dynamic example instance dictionary from model fields
+            example_dict = {}
+            for field_name, field in response_schema.model_fields.items():
+                if field_name == "agent_name":
+                    example_dict[field_name] = "SpecializedAgent"
+                elif field_name == "finding_type":
+                    example_dict[field_name] = "finding_category"
+                elif field_name == "severity":
+                    example_dict[field_name] = "high"
+                elif field_name == "target_drug_id":
+                    example_dict[field_name] = "DRUG-101"
+                elif field_name == "target_location_id":
+                    example_dict[field_name] = "HOSP-A"
+                elif field_name == "description":
+                    example_dict[field_name] = "One concise sentence analysis."
+                elif field_name == "metrics":
+                    example_dict[field_name] = {}
+                else:
+                    example_dict[field_name] = "sample_value"
 
-        # Enable native JSON format decoding in Ollama API request payload
-        raw_response = await self.generate(prompt=prompt, system_prompt=full_system, format_json=True)
+        example_json_str = json.dumps(example_dict, indent=2)
+        
+        system_instructions = (
+            f"Respond with a single raw JSON object instance matching this exact template:\n{example_json_str}\n"
+            f"Do NOT output markdown codeblocks. Do NOT include introductory text."
+        )
+        full_system = f"{system_prompt}\n\n{system_instructions}" if system_prompt else system_instructions
+
+        # Suffix prompt with direct JSON initiation prompt to force model to start generation with '{' immediately
+        full_prompt = f"{prompt}\n\nOutput JSON matching structure:\n{example_json_str}\n\nJSON Output:"
+
+        # Enable native JSON format decoding in Ollama API request payload with temperature=0.0
+        raw_response = await self.generate(prompt=full_prompt, system_prompt=full_system, format_json=True)
         
         # Clean potential markdown wrapping e.g. ```json ... ```
         cleaned_response = raw_response
@@ -103,8 +135,8 @@ class OllamaProvider(BaseSLMProvider):
             validated_obj = response_schema.model_validate(parsed_data)
             return validated_obj
         except (json.JSONDecodeError, ValidationError) as err:
-            logger.error(f"Failed to validate SLM output into schema {response_schema.__name__}: {err}")
-            raise ValueError(f"SLM response failed schema validation: {str(err)}") from err
+            logger.error(f"Failed to validate SLM output into schema {response_schema.__name__}: {err}. Raw output: {raw_response}")
+            raise ValueError(f"SLM response failed schema validation: {str(err)}. Raw output: {raw_response[:200]}") from err
 
     async def health_check(self) -> bool:
         """
