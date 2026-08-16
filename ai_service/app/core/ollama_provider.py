@@ -109,19 +109,16 @@ class OllamaProvider(BaseSLMProvider):
                 else:
                     example_dict[field_name] = "sample_value"
 
-        example_json_str = json.dumps(example_dict, indent=2)
+        example_json_str = json.dumps(example_dict)
         
         system_instructions = (
-            f"Respond with a single raw JSON object instance matching this exact template:\n{example_json_str}\n"
+            f"Respond with a single raw JSON object instance matching this exact structure:\n{example_json_str}\n"
             f"Do NOT output markdown codeblocks. Do NOT include introductory text."
         )
         full_system = f"{system_prompt}\n\n{system_instructions}" if system_prompt else system_instructions
 
-        # Suffix prompt with direct JSON initiation prompt to force model to start generation with '{' immediately
-        full_prompt = f"{prompt}\n\nOutput JSON matching structure:\n{example_json_str}\n\nJSON Output:"
-
         # Enable native JSON format decoding in Ollama API request payload with temperature=0.0
-        raw_response = await self.generate(prompt=full_prompt, system_prompt=full_system, format_json=True)
+        raw_response = await self.generate(prompt=prompt, system_prompt=full_system, format_json=True)
         
         # Clean potential markdown wrapping e.g. ```json ... ```
         cleaned_response = raw_response

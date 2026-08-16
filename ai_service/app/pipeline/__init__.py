@@ -5,6 +5,9 @@ from app.pipeline.nodes import (
     run_demand_node,
     run_procurement_node,
     run_distribution_node,
+    run_vendor_node,
+    run_compliance_node,
+    run_coordinator_node,
 )
 
 __all__ = [
@@ -14,4 +17,7 @@ __all__ = [
     "run_demand_node",
     "run_procurement_node",
     "run_distribution_node",
+    "run_vendor_node",
+    "run_compliance_node",
+    "run_coordinator_node",
 ]

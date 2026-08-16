@@ -9,6 +9,9 @@ from app.pipeline.nodes import (
     run_demand_node,
     run_procurement_node,
     run_distribution_node,
+    run_vendor_node,
+    run_compliance_node,
+    run_coordinator_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -16,14 +19,15 @@ logger = logging.getLogger(__name__)
 class MultiAgentOrchestrator:
     """
     LangGraph-compatible Orchestrator managing execution, state aggregation,
-    and fault tolerance across the four specialized agents:
+    and decision synthesis across all six specialized agents and CoordinatorAgent:
     - InventoryAgent
     - DemandAgent
     - ProcurementAgent
     - DistributionAgent
-    
-    Uses controlled concurrency (max_concurrency=1 by default for local SLMs like Ollama)
-    to prevent HTTP connection queue contention on local single-model servers.
+    - VendorAgent
+    - ComplianceAgent
+        ↓
+    - CoordinatorAgent (Final Synthesis)
     """
 
     def __init__(self, slm_provider: BaseSLMProvider, max_concurrency: int = 1):
@@ -32,10 +36,11 @@ class MultiAgentOrchestrator:
 
     async def run(self, snapshot: SupplyChainSnapshotPayload) -> SupplyChainState:
         """
-        Execute all independent specialized agents in the pipeline and aggregate their findings.
+        Execute all independent specialized agents in the pipeline, aggregate their findings,
+        and run CoordinatorAgent to synthesize a unified decision recommendation response.
         
         :param snapshot: Master operational supply chain snapshot payload.
-        :return: SupplyChainState containing findings, statuses, and errors.
+        :return: SupplyChainState containing findings, statuses, errors, and coordinator_recommendation.
         """
         # Initialize typed shared state
         state: SupplyChainState = {
@@ -44,17 +49,26 @@ class MultiAgentOrchestrator:
             "demand_findings": [],
             "procurement_findings": [],
             "distribution_findings": [],
+            "vendor_findings": [],
+            "compliance_findings": [],
+            "coordinator_recommendation": None,
             "agent_statuses": {
                 "InventoryAgent": "pending",
                 "DemandAgent": "pending",
                 "ProcurementAgent": "pending",
                 "DistributionAgent": "pending",
+                "VendorAgent": "pending",
+                "ComplianceAgent": "pending",
+                "CoordinatorAgent": "pending",
             },
             "agent_errors": {
                 "InventoryAgent": None,
                 "DemandAgent": None,
                 "ProcurementAgent": None,
                 "DistributionAgent": None,
+                "VendorAgent": None,
+                "ComplianceAgent": None,
+                "CoordinatorAgent": None,
             },
         }
 
@@ -69,8 +83,11 @@ class MultiAgentOrchestrator:
             run_demand_node,
             run_procurement_node,
             run_distribution_node,
+            run_vendor_node,
+            run_compliance_node,
         ]
 
+        # 1. Execute specialized agent nodes in parallel
         results = await asyncio.gather(
             *[run_node_with_semaphore(fn) for fn in node_funcs],
             return_exceptions=True
@@ -82,13 +99,16 @@ class MultiAgentOrchestrator:
             "demand_findings": [],
             "procurement_findings": [],
             "distribution_findings": [],
+            "vendor_findings": [],
+            "compliance_findings": [],
+            "coordinator_recommendation": None,
             "agent_statuses": dict(state["agent_statuses"]),
             "agent_errors": dict(state["agent_errors"]),
         }
 
-        agent_names = ["InventoryAgent", "DemandAgent", "ProcurementAgent", "DistributionAgent"]
+        agent_names = ["InventoryAgent", "DemandAgent", "ProcurementAgent", "DistributionAgent", "VendorAgent", "ComplianceAgent"]
 
-        # Aggregate node results safely
+        # Aggregate specialized node results safely
         for idx, res in enumerate(results):
             fallback_agent_name = agent_names[idx]
 
@@ -107,11 +127,22 @@ class MultiAgentOrchestrator:
                     final_state["procurement_findings"] = res["procurement_findings"]
                 if "distribution_findings" in res:
                     final_state["distribution_findings"] = res["distribution_findings"]
+                if "vendor_findings" in res:
+                    final_state["vendor_findings"] = res["vendor_findings"]
+                if "compliance_findings" in res:
+                    final_state["compliance_findings"] = res["compliance_findings"]
 
                 status = res.get("status", "success")
                 error = res.get("error", None)
 
                 final_state["agent_statuses"][agent_name] = status
                 final_state["agent_errors"][agent_name] = error
+
+        # 2. Execute CoordinatorAgent synthesis node over aggregated state
+        coord_res = await run_coordinator_node(final_state, self.slm_provider)
+        if isinstance(coord_res, dict):
+            final_state["coordinator_recommendation"] = coord_res.get("coordinator_recommendation")
+            final_state["agent_statuses"]["CoordinatorAgent"] = coord_res.get("status", "success")
+            final_state["agent_errors"]["CoordinatorAgent"] = coord_res.get("error", None)
 
         return final_state

@@ -16,11 +16,12 @@ from app.schemas import (
     ConsumptionRecordSchema,
     ShipmentSchema,
     BatchSchema,
+    VendorSchema,
 )
 
 async def run_real_orchestration_test():
     print("=" * 80)
-    print("STAGE 9: MULTI-AGENT LANGGRAPH ORCHESTRATION REAL INFERENCE TEST")
+    print("STAGE 13: FULL 6-AGENT + COORDINATOR LANGGRAPH PIPELINE REAL TEST")
     print("=" * 80)
     print(f"SLM Runtime    : Ollama ({settings.OLLAMA_BASE_URL})")
     print(f"Candidate Model: {settings.SLM_MODEL_NAME}")
@@ -36,9 +37,9 @@ async def run_real_orchestration_test():
 
     print("[SUCCESS] Ollama service is ACTIVE.")
 
-    # Step 2: Construct Realistic Multi-Hospital Operational Snapshot Payload
+    # Step 2: Construct Realistic Multi-Facility Operational Snapshot Payload
     snapshot = SupplyChainSnapshotPayload(
-        snapshot_id="SNAP-REAL-ORCH-001",
+        snapshot_id="SNAP-REAL-STAGE13-001",
         drugs=[
             DrugSchema(
                 drug_id="DRUG-505",
@@ -74,7 +75,17 @@ async def run_real_orchestration_test():
                 location_type="hospital",
                 drug_id="DRUG-505",
                 available_stock=80,
-                reserved_stock=10
+                reserved_stock=10,
+                batches=[
+                    BatchSchema(
+                        batch_id="BATCH-MERO-2",
+                        drug_id="DRUG-505",
+                        manufacturer="MedPharma",
+                        quantity=80,
+                        expiry_date=date(2027, 12, 31),
+                        quality_status="passed"
+                    )
+                ]
             )
         ],
         consumption_records=[
@@ -87,17 +98,26 @@ async def run_real_orchestration_test():
             ConsumptionRecordSchema(hospital_id="HOSP-CLINIC-EAST", drug_id="DRUG-505", period_start=date(2026, 7, 8), period_end=date(2026, 7, 14), quantity_consumed=105, daily_avg_consumption=15.0),
             ConsumptionRecordSchema(hospital_id="HOSP-CLINIC-EAST", drug_id="DRUG-505", period_start=date(2026, 7, 15), period_end=date(2026, 7, 21), quantity_consumed=110, daily_avg_consumption=15.7),
             ConsumptionRecordSchema(hospital_id="HOSP-CLINIC-EAST", drug_id="DRUG-505", period_start=date(2026, 7, 22), period_end=date(2026, 7, 28), quantity_consumed=280, daily_avg_consumption=40.0)
+        ],
+        vendors=[
+            VendorSchema(
+                vendor_id="VEND-MEDPHARMA",
+                name="MedPharma Supplies Ltd",
+                avg_lead_time_days=3,
+                reliability_score=0.95,
+                active_orders_count=2
+            )
         ]
     )
 
     print("\n[Step 2] Executing MultiAgentOrchestrator.run(snapshot)...")
-    print("Concurrent parallel execution of: InventoryAgent, DemandAgent, ProcurementAgent, DistributionAgent")
+    print("Execution of: InventoryAgent, DemandAgent, ProcurementAgent, DistributionAgent, VendorAgent, ComplianceAgent -> CoordinatorAgent")
     print("-" * 80)
 
     orchestrator = MultiAgentOrchestrator(slm_provider=slm_provider)
     state: SupplyChainState = await orchestrator.run(snapshot)
 
-    print("\n[SUCCESS] Orchestration complete! Aggregated State Summary:")
+    print("\n[SUCCESS] Orchestration complete! Aggregated Component Statuses:")
     print(f"  Snapshot Reference ID: {state['snapshot'].snapshot_id}")
     print(f"  Agent Statuses       : {state['agent_statuses']}")
     print(f"  Agent Errors         : {state['agent_errors']}")
@@ -119,8 +139,32 @@ async def run_real_orchestration_test():
     for idx, f in enumerate(state['distribution_findings'], 1):
         print(f"   [{idx}] {f.finding_type.upper()} ({f.severity}) @ {f.target_location_id}: {f.description}")
 
+    print(f"\n5. VENDOR AGENT FINDINGS ({len(state['vendor_findings'])}):")
+    for idx, f in enumerate(state['vendor_findings'], 1):
+        print(f"   [{idx}] {f.finding_type.upper()} ({f.severity}) @ {f.target_location_id}: {f.description}")
+
+    print(f"\n6. COMPLIANCE AGENT FINDINGS ({len(state['compliance_findings'])}):")
+    for idx, f in enumerate(state['compliance_findings'], 1):
+        print(f"   [{idx}] {f.finding_type.upper()} ({f.severity}) @ {f.target_location_id}: {f.description}")
+
     print("-" * 80)
-    print("STAGE 9 MULTI-AGENT ORCHESTRATION REAL TEST PASSED! ✅")
+    print("\n7. FINAL COORDINATOR RECOMMENDATION RESPONSE:")
+    coord_rec = state.get("coordinator_recommendation")
+    if coord_rec:
+        print(f"   Recommendation ID   : {coord_rec.recommendation_id}")
+        print(f"   Overall Risk Level  : {coord_rec.overall_risk_level.upper()}")
+        print(f"   Human Approval Req. : {coord_rec.requires_human_approval}")
+        print(f"   Recommended Actions :")
+        for idx, act in enumerate(coord_rec.recommended_actions, 1):
+            print(f"     Action #{idx}: {act.action_type.upper()} ({act.priority.upper()})")
+            print(f"       Target Drug     : {act.target_drug_id}")
+            print(f"       Destination     : {act.destination_location_id}")
+            print(f"       Source          : {act.source_location_id if act.source_location_id else 'N/A'}")
+            print(f"       Quantity        : {act.recommended_quantity} units")
+            print(f"       Reasoning       : {act.reasoning}")
+
+    print("-" * 80)
+    print("STAGE 13 FULL PIPELINE REAL INFERENCE TEST PASSED! ✅")
     print("=" * 80)
 
 if __name__ == "__main__":
