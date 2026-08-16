@@ -1,0 +1,24 @@
+# Python environment
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+.env
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Model weights / cache (if stored locally)
+models/
+*.gguf
+*.bin
+
+# IDEs
+.vscode/
+.idea/
+*.swp

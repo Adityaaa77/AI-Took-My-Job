@@ -34,3 +34,6 @@ coverage/
 
 # Vite
 vite.config.*.timestamp-*
+
+# Python virtual environment
+drug-ai/
