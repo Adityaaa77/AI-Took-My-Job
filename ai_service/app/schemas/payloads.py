@@ -119,7 +119,7 @@ class ShipmentSchema(BaseModel):
     destination_id: str = Field(..., description="Hospital or Warehouse destination")
     drug_id: str = Field(..., description="Drug ID being shipped")
     quantity: int = Field(..., gt=0, description="Quantity in shipment")
-    status: Literal["preparing", "in_transit", "delayed", "delivered"] = Field(
+    status: Literal["preparing", "dispatched", "in_transit", "delayed", "delivered", "received"] = Field(
         default="preparing", description="Current transit status"
     )
     estimated_arrival: datetime = Field(..., description="Estimated arrival timestamp")

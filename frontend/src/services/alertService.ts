@@ -1,11 +1,11 @@
 import { ApiService } from './api';
 import type { Alert, SeverityLevel } from '../types';
-import { MOCK_ALERTS, MOCK_USERS } from './mockData';
+import { MOCK_ALERTS } from './mockData';
 
 let localAlerts: Alert[] = [...MOCK_ALERTS];
 
 export const alertService = {
-  async getAllAlerts(params?: { is_resolved?: boolean; severity?: SeverityLevel; alert_type?: string }) {
+  async getAllAlerts(params?: { is_resolved?: boolean; severity?: SeverityLevel; alert_type?: string; location_id?: string }) {
     let filtered = [...localAlerts];
     if (params?.is_resolved !== undefined) {
       filtered = filtered.filter((a) => a.is_resolved === params.is_resolved);
@@ -21,12 +21,16 @@ export const alertService = {
       ? '?' +
         new URLSearchParams(
           Object.entries(params)
-            .filter(([, v]) => v !== undefined)
+            .filter(([, v]) => v !== undefined && v !== 'all')
             .map(([k, v]) => [k, String(v)])
         ).toString()
       : '';
 
-    return ApiService.get<Alert[]>(`/alerts${queryStr}`, filtered);
+    const res = await ApiService.get<Alert[]>(`/alerts${queryStr}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localAlerts = res.data;
+    }
+    return res;
   },
 
   async createAlert(alertData: Partial<Alert>) {
@@ -36,13 +40,16 @@ export const alertService = {
       alert_type: alertData.alert_type || 'low_stock',
       severity: alertData.severity || 'medium',
       drug_id: alertData.drug_id,
-      location_id: alertData.location_id,
+      location_id: alertData.location_id || 'HOSP-001',
       message: alertData.message || 'System alert triggered.',
       is_resolved: false,
       createdAt: new Date().toISOString(),
     };
-    localAlerts = [newAlert, ...localAlerts];
-    return ApiService.post<Alert>('/alerts', alertData, newAlert);
+    const res = await ApiService.post<Alert>('/alerts', alertData, newAlert);
+    if (res.success && res.data && !res.isMock) {
+      localAlerts = [res.data, ...localAlerts];
+    }
+    return res;
   },
 
   async resolveAlert(id: string, notes?: string) {
@@ -51,12 +58,11 @@ export const alertService = {
       localAlerts[idx] = {
         ...localAlerts[idx],
         is_resolved: true,
-        resolved_by: MOCK_USERS.admin,
         resolved_at: new Date().toISOString(),
         resolution_notes: notes || 'Resolved via operator action.',
       };
-      return ApiService.patch<Alert>(`/alerts/${id}/resolve`, { resolution_notes: notes }, localAlerts[idx]);
     }
-    return { success: false, data: null as unknown as Alert };
+    const fallback = idx !== -1 ? localAlerts[idx] : undefined;
+    return ApiService.patch<Alert>(`/alerts/${id}/resolve`, { resolution_notes: notes }, fallback);
   },
 };

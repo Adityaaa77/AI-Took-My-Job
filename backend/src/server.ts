@@ -21,7 +21,9 @@ import inventoryRoutes     from "./routes/inventory.routes.js";
 import purchaseOrderRoutes from "./routes/purchaseOrder.routes.js";
 import shipmentRoutes      from "./routes/shipment.routes.js";
 import consumptionRoutes   from "./routes/consumption.routes.js";
+import replenishmentRoutes from "./routes/replenishment.routes.js";
 import alertRoutes         from "./routes/alert.routes.js";
+import auditRoutes         from "./routes/audit.routes.js";
 import aiRoutes            from "./routes/ai.routes.js";
 
 dotenv.config();
@@ -52,7 +54,9 @@ app.use("/api/v1/inventory",        inventoryRoutes);
 app.use("/api/v1/purchase-orders",  purchaseOrderRoutes);
 app.use("/api/v1/shipments",        shipmentRoutes);
 app.use("/api/v1/consumption",      consumptionRoutes);
+app.use("/api/v1/replenishments",   replenishmentRoutes);
 app.use("/api/v1/alerts",           alertRoutes);
+app.use("/api/v1/audit-logs",       auditRoutes);
 app.use("/api/v1/ai",              aiRoutes);
 
 // ─── 404 Fallback ─────────────────────────────────────────────────────────────

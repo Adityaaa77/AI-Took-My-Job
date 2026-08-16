@@ -4,10 +4,11 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Building2, Plus, CheckCircle2, AlertTriangle, Truck } from 'lucide-react';
 import { replenishmentService } from '../services/replenishmentService';
 import { drugService } from '../services/drugService';
 import { networkService } from '../services/networkService';
+import { useAuth } from '../context/AuthContext';
 import type { ReplenishmentRequest, Drug, Hospital, ReplenishmentStatus } from '../types';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Table, type Column } from '../components/ui/Table';
@@ -18,6 +19,7 @@ import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
 
 export const ReplenishmentPage: React.FC = () => {
+  const { role } = useAuth();
   const [requests, setRequests] = useState<ReplenishmentRequest[]>([]);
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -35,7 +37,7 @@ export const ReplenishmentPage: React.FC = () => {
     reason: 'Stock buffer nearing exhaustion due to surge in daily consumption.',
   });
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; isError?: boolean } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -58,20 +60,45 @@ export const ReplenishmentPage: React.FC = () => {
     e.preventDefault();
     if (!newRequest.drug_id) return;
 
-    await replenishmentService.createRequest(newRequest);
-    setCreateModalOpen(false);
-    setToastMessage('Emergency replenishment requisition submitted to Central Supply Command.');
-    loadData();
+    const res = await replenishmentService.createRequest(newRequest);
+    if (res.success) {
+      setCreateModalOpen(false);
+      setToast({
+        message: 'Emergency replenishment requisition submitted to Central Supply Command.',
+        isError: false,
+      });
+      loadData();
+    } else {
+      setToast({
+        message: res.message || 'Failed to submit replenishment request.',
+        isError: true,
+      });
+    }
   };
 
-  const handleStatusUpdate = async (id: string, status: ReplenishmentStatus) => {
-    await replenishmentService.updateRequestStatus(id, status, 'WH-001 (CMSS North)');
-    setToastMessage(`Requisition ${id} status updated to ${status.toUpperCase()}.`);
-    loadData();
+  const handleStatusUpdate = async (id: string, status: ReplenishmentStatus, allocatedFrom?: string) => {
+    const res = await replenishmentService.updateRequestStatus(
+      id,
+      status,
+      allocatedFrom || 'WH-001 (CMSS North Hub)'
+    );
+
+    if (res.success) {
+      setToast({
+        message: `Requisition ${id} status updated to ${status.toUpperCase()}.`,
+        isError: false,
+      });
+      loadData();
+    } else {
+      setToast({
+        message: res.message || `Failed to update requisition status to ${status}.`,
+        isError: true,
+      });
+    }
   };
 
   const filteredRequests = requests.filter((r) => {
-    const reqId = r.request_id.toLowerCase();
+    const reqId = (r.request_id || r._id || '').toLowerCase();
     const hosp = r.hospital_name?.toLowerCase() || r.hospital_id.toLowerCase();
     const drugName =
       typeof r.drug_id === 'string' ? r.drug_id.toLowerCase() : r.drug_id?.name?.toLowerCase() || '';
@@ -86,6 +113,12 @@ export const ReplenishmentPage: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Role permissions helpers
+  const canApprove = role === 'admin' || role === 'procurement_officer';
+  const canAllocate = role === 'admin' || role === 'warehouse_manager' || role === 'procurement_officer';
+  const canDispatch = role === 'admin' || role === 'warehouse_manager';
+  const canReceive = role === 'admin' || role === 'hospital_staff' || role === 'warehouse_manager';
+
   const columns: Column<ReplenishmentRequest>[] = [
     {
       header: 'Requisition ID',
@@ -93,7 +126,7 @@ export const ReplenishmentPage: React.FC = () => {
         <div>
           <span className="font-mono font-bold text-xs text-slate-900">{r.request_id}</span>
           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-            {new Date(r.createdAt).toLocaleDateString()}
+            {new Date(r.createdAt || Date.now()).toLocaleDateString()}
           </p>
         </div>
       ),
@@ -149,31 +182,81 @@ export const ReplenishmentPage: React.FC = () => {
       accessor: (r) => (
         <div className="flex items-center gap-1.5">
           {r.status === 'pending' && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleStatusUpdate(r.request_id, 'approved')}
-            >
-              Approve
-            </Button>
+            canApprove ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleStatusUpdate(r.request_id || r._id!, 'approved')}
+              >
+                Approve
+              </Button>
+            ) : (
+              <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                Pending Approval
+              </span>
+            )
           )}
+
           {r.status === 'approved' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleStatusUpdate(r.request_id, 'allocated')}
-            >
-              Allocate
-            </Button>
+            canAllocate ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStatusUpdate(r.request_id || r._id!, 'allocated')}
+              >
+                Allocate
+              </Button>
+            ) : (
+              <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                Awaiting Allocation
+              </span>
+            )
           )}
+
           {r.status === 'allocated' && (
-            <Button
-              variant="success"
-              size="sm"
-              onClick={() => handleStatusUpdate(r.request_id, 'dispatched')}
-            >
-              Dispatch
-            </Button>
+            canDispatch ? (
+              <Button
+                variant="success"
+                size="sm"
+                icon={<Truck className="h-3.5 w-3.5" />}
+                onClick={() => handleStatusUpdate(r.request_id || r._id!, 'dispatched')}
+              >
+                Dispatch Shipment
+              </Button>
+            ) : (
+              <span className="text-[11px] font-semibold text-cyan-700 bg-cyan-50 px-2 py-1 rounded">
+                Awaiting Dispatch
+              </span>
+            )
+          )}
+
+          {r.status === 'dispatched' && (
+            canReceive ? (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                onClick={() => handleStatusUpdate(r.request_id || r._id!, 'received')}
+              >
+                Confirm Receipt
+              </Button>
+            ) : (
+              <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded">
+                En Route
+              </span>
+            )
+          )}
+
+          {r.status === 'received' && (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded">
+              ✓ Stock Synced
+            </span>
+          )}
+
+          {r.status === 'rejected' && (
+            <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded">
+              Rejected
+            </span>
           )}
         </div>
       ),
@@ -193,7 +276,7 @@ export const ReplenishmentPage: React.FC = () => {
         />
         <StatCard
           title="Allocated Reserves"
-          value={requests.filter((r) => r.status === 'allocated').length}
+          value={requests.filter((r) => r.status === 'allocated' || r.status === 'approved').length}
           icon={<CheckCircle2 className="h-5 w-5" />}
           subtitle="Assigned from central hubs"
           color="blue"
@@ -201,26 +284,36 @@ export const ReplenishmentPage: React.FC = () => {
         <StatCard
           title="Dispatched Transfers"
           value={requests.filter((r) => r.status === 'dispatched').length}
-          icon={<Building2 className="h-5 w-5" />}
+          icon={<Truck className="h-5 w-5" />}
           subtitle="En route to hospital wards"
           color="cyan"
         />
         <StatCard
           title="Critical Urgency"
           value={requests.filter((r) => r.urgency === 'critical').length}
-          icon={<ShieldAlert className="h-5 w-5" />}
+          icon={<AlertTriangle className="h-5 w-5" />}
           subtitle="Priority emergency allocations"
           color="rose"
         />
       </div>
 
-      {toastMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs">
+      {toast && (
+        <div
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs ${
+            toast.isError
+              ? 'bg-rose-50 border border-rose-300 text-rose-900'
+              : 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span>{toastMessage}</span>
+            {toast.isError ? (
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            )}
+            <span>{toast.message}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-emerald-700 underline">
+          <button onClick={() => setToast(null)} className="underline ml-4">
             Dismiss
           </button>
         </div>
@@ -245,6 +338,7 @@ export const ReplenishmentPage: React.FC = () => {
             <option value="approved">Approved</option>
             <option value="allocated">Allocated</option>
             <option value="dispatched">Dispatched</option>
+            <option value="received">Received</option>
           </select>
         </div>
 
@@ -254,9 +348,9 @@ export const ReplenishmentPage: React.FC = () => {
           icon={<Plus className="h-4 w-4" />}
           onClick={() => {
             setNewRequest({
-              hospital_id: 'HOSP-001',
-              hospital_name: 'AIIMS New Delhi',
-              drug_id: drugs[1]?.drug_id || 'DRUG-002',
+              hospital_id: hospitals[0]?.hospital_id || 'HOSP-001',
+              hospital_name: hospitals[0]?.name || 'AIIMS New Delhi',
+              drug_id: drugs[0]?.drug_id || 'DRUG-001',
               requested_quantity: 300,
               urgency: 'critical',
               reason: 'Stockout imminent due to emergency ICU bed surge.',

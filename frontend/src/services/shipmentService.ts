@@ -7,7 +7,7 @@ let localShipments: Shipment[] = [...MOCK_SHIPMENTS];
 export const shipmentService = {
   async getAllShipments(params?: { status?: string; destination_id?: string; origin_id?: string }) {
     let filtered = [...localShipments];
-    if (params?.status) {
+    if (params?.status && params.status !== 'all') {
       filtered = filtered.filter((s) => s.status === params.status);
     }
     if (params?.destination_id) {
@@ -26,7 +26,11 @@ export const shipmentService = {
         ).toString()
       : '';
 
-    return ApiService.get<Shipment[]>(`/shipments${queryStr}`, filtered);
+    const res = await ApiService.get<Shipment[]>(`/shipments${queryStr}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localShipments = res.data;
+    }
+    return res;
   },
 
   async getShipmentById(id: string) {
@@ -80,8 +84,11 @@ export const shipmentService = {
       ],
     };
 
-    localShipments = [newShipment, ...localShipments];
-    return ApiService.post<Shipment>('/shipments', shipmentData, newShipment);
+    const res = await ApiService.post<Shipment>('/shipments', shipmentData, newShipment);
+    if (res.success && res.data && !res.isMock) {
+      localShipments = [res.data, ...localShipments];
+    }
+    return res;
   },
 
   async updateShipmentStatus(id: string, status: ShipmentStatus, tracking_note?: string) {
@@ -91,10 +98,10 @@ export const shipmentService = {
         ...localShipments[idx],
         status,
         ...(tracking_note && { tracking_note }),
-        ...(status === 'delivered' && { actual_arrival: new Date().toISOString() }),
+        ...((status === 'delivered' || status === 'received') && { actual_arrival: new Date().toISOString() }),
       };
-      return ApiService.patch<Shipment>(`/shipments/${id}/status`, { status, tracking_note }, localShipments[idx]);
     }
-    return { success: false, data: null as unknown as Shipment };
+    const fallback = idx !== -1 ? localShipments[idx] : undefined;
+    return ApiService.patch<Shipment>(`/shipments/${id}/status`, { status, tracking_note }, fallback);
   },
 };

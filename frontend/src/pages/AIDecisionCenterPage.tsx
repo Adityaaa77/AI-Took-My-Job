@@ -29,6 +29,7 @@ export const AIDecisionCenterPage: React.FC = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecommendations();
@@ -44,12 +45,17 @@ export const AIDecisionCenterPage: React.FC = () => {
   const handleTriggerAnalysis = async () => {
     setAnalyzing(true);
     setActionSuccessMessage(null);
+    setErrorMessage(null);
     try {
       const res = await aiService.triggerAnalysis();
-      if (res.data) {
+      if (res.success && res.data && !res.isMock) {
         setSelectedRec(res.data);
         setActionSuccessMessage('AI Multi-Agent Analysis synthesized new operational recommendations!');
+      } else if (res.message) {
+        setErrorMessage(`AI Analysis Failed: ${res.message}`);
       }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'AI analysis service encountered an error.');
     } finally {
       setAnalyzing(false);
     }
@@ -136,6 +142,22 @@ export const AIDecisionCenterPage: React.FC = () => {
           <button
             onClick={() => setActionSuccessMessage(null)}
             className="text-emerald-700 hover:text-emerald-900 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Error Banner Toast */}
+      {errorMessage && (
+        <div className="p-4 bg-rose-50 border border-rose-300 text-rose-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-rose-600" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-700 hover:text-rose-900 underline"
           >
             Dismiss
           </button>

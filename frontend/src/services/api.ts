@@ -53,7 +53,8 @@ export class ApiService {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout before fallback
+      const timeoutMs = endpoint.includes('/ai') ? 600_000 : 15_000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(url, {
         ...options,
@@ -63,11 +64,17 @@ export class ApiService {
 
       clearTimeout(timeoutId);
 
+      const json = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+        return {
+          success: false,
+          data: null as unknown as T,
+          isMock: false,
+          message: json.message || `HTTP Error ${response.status}: ${response.statusText}`,
+        };
       }
 
-      const json = await response.json();
       return {
         success: json.success ?? true,
         data: json.data !== undefined ? json.data : (json as unknown as T),

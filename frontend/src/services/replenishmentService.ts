@@ -7,13 +7,27 @@ let localReplenishments: ReplenishmentRequest[] = [...MOCK_REPLENISHMENTS];
 export const replenishmentService = {
   async getAllRequests(params?: { hospital_id?: string; status?: string }) {
     let filtered = [...localReplenishments];
-    if (params?.hospital_id) {
+    if (params?.hospital_id && params.hospital_id !== 'all') {
       filtered = filtered.filter((r) => r.hospital_id === params.hospital_id);
     }
-    if (params?.status) {
+    if (params?.status && params.status !== 'all') {
       filtered = filtered.filter((r) => r.status === params.status);
     }
-    return ApiService.get<ReplenishmentRequest[]>('/replenishments', filtered);
+
+    const queryStr = params
+      ? '?' +
+        new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== 'all')
+            .map(([k, v]) => [k, String(v)])
+        ).toString()
+      : '';
+
+    const res = await ApiService.get<ReplenishmentRequest[]>(`/replenishments${queryStr}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localReplenishments = res.data;
+    }
+    return res;
   },
 
   async createRequest(reqData: Partial<ReplenishmentRequest>) {
@@ -32,12 +46,15 @@ export const replenishmentService = {
       urgency: reqData.urgency || 'standard',
       reason: reqData.reason,
       status: 'pending',
-      requested_by: reqData.requested_by || 'Dr. Ananya Sharma',
+      requested_by: 'Hospital Pharmacy Staff',
       createdAt: new Date().toISOString(),
     };
 
-    localReplenishments = [newReq, ...localReplenishments];
-    return ApiService.post<ReplenishmentRequest>('/replenishments', reqData, newReq);
+    const res = await ApiService.post<ReplenishmentRequest>('/replenishments', reqData, newReq);
+    if (res.success && res.data && !res.isMock) {
+      localReplenishments = [res.data, ...localReplenishments];
+    }
+    return res;
   },
 
   async updateRequestStatus(id: string, status: ReplenishmentStatus, allocated_from?: string) {
@@ -49,8 +66,8 @@ export const replenishmentService = {
         ...(allocated_from && { allocated_from }),
         ...(status === 'approved' && { approved_quantity: localReplenishments[idx].requested_quantity }),
       };
-      return { success: true, data: localReplenishments[idx] };
     }
-    return { success: false, data: null as unknown as ReplenishmentRequest };
+    const fallback = idx !== -1 ? localReplenishments[idx] : undefined;
+    return ApiService.patch<ReplenishmentRequest>(`/replenishments/${id}/status`, { status, allocated_from }, fallback);
   },
 };

@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Building2,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -24,7 +25,8 @@ import {
 import { consumptionService } from '../services/consumptionService';
 import { drugService } from '../services/drugService';
 import { networkService } from '../services/networkService';
-import type { ConsumptionRecord, Drug, Hospital } from '../types';
+import { inventoryService } from '../services/inventoryService';
+import type { ConsumptionRecord, Drug, Hospital, InventoryItem } from '../types';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Table, type Column } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
@@ -37,21 +39,27 @@ export const HospitalConsumptionPage: React.FC = () => {
   const [records, setRecords] = useState<ConsumptionRecord[]>([]);
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedHospital, setSelectedHospital] = useState('HOSP-001');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
   const [recordModalOpen, setRecordModalOpen] = useState(false);
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorModalType, setErrorModalType] = useState<'stock' | 'auth'>('stock');
+  const [stockErrorMsg, setStockErrorMsg] = useState('');
+  const [stockDetails, setStockDetails] = useState<{ requested: number; available: number; drugName: string; facilityId: string } | null>(null);
+
   const [newRecord, setNewRecord] = useState<Partial<ConsumptionRecord>>({
     hospital_id: 'HOSP-001',
     drug_id: '',
-    quantity_consumed: 68,
-    daily_avg_consumption: 68,
+    quantity_consumed: 50,
+    daily_avg_consumption: 50,
     is_anomaly: false,
     notes: 'ICU surgical ward consumption log.',
   });
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; isError?: boolean } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -59,15 +67,17 @@ export const HospitalConsumptionPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [cRes, dRes, hRes] = await Promise.all([
+    const [cRes, dRes, hRes, invRes] = await Promise.all([
       consumptionService.getAllConsumption(),
       drugService.getAllDrugs(),
       networkService.getAllHospitals(),
+      inventoryService.getAllInventory(),
     ]);
 
     if (cRes.data) setRecords(cRes.data);
     if (dRes.data) setDrugs(dRes.data);
     if (hRes.data) setHospitals(hRes.data);
+    if (invRes.data) setInventory(invRes.data);
     setLoading(false);
   };
 
@@ -75,10 +85,69 @@ export const HospitalConsumptionPage: React.FC = () => {
     e.preventDefault();
     if (!newRecord.drug_id) return;
 
-    await consumptionService.recordConsumption(newRecord);
-    setRecordModalOpen(false);
-    setToastMessage('Consumption log recorded. Autonomous anomaly checks executed.');
-    loadData();
+    const targetHosp = String(newRecord.hospital_id || 'HOSP-001').split(' ')[0].trim();
+    const targetDrugCode = typeof newRecord.drug_id === 'string' ? newRecord.drug_id : newRecord.drug_id?.drug_id;
+    const reqQty = Number(newRecord.quantity_consumed || 0);
+
+    // Pre-check available stock from inventory records
+    const invItem = inventory.find(
+      (i) =>
+        i.location_id.toLowerCase() === targetHosp.toLowerCase() &&
+        (typeof i.drug_id === 'string'
+          ? i.drug_id === targetDrugCode
+          : i.drug_id._id === targetDrugCode || i.drug_id.drug_id === targetDrugCode)
+    );
+
+    const avail = invItem ? invItem.available_stock : 0;
+    const drugName = invItem?.drug_id?.name || targetDrugCode || 'Selected Drug Formulation';
+
+    if (invItem && avail < reqQty) {
+      setRecordModalOpen(false);
+      setErrorModalType('stock');
+      setStockDetails({
+        requested: reqQty,
+        available: avail,
+        drugName,
+        facilityId: targetHosp,
+      });
+      setStockErrorMsg(
+        `Insufficient available stock at facility '${targetHosp}' for '${drugName}'. Current stock: ${avail} units, Requested: ${reqQty} units.`
+      );
+      setErrorModalOpen(true);
+      return;
+    }
+
+    const res = await consumptionService.recordConsumption(newRecord);
+    if (res.success) {
+      setRecordModalOpen(false);
+      setToast({
+        message: `Consumption log of ${reqQty} units recorded successfully. Hospital available inventory updated.`,
+        isError: false,
+      });
+      loadData();
+    } else {
+      setRecordModalOpen(false);
+      const isAuthErr =
+        res.message?.toLowerCase().includes('permission') ||
+        res.message?.toLowerCase().includes('unauthorized') ||
+        res.message?.toLowerCase().includes('role') ||
+        res.message?.toLowerCase().includes('forbidden');
+
+      if (isAuthErr) {
+        setErrorModalType('auth');
+        setStockErrorMsg(res.message || 'You do not have permission to perform this action.');
+      } else {
+        setErrorModalType('stock');
+        setStockDetails({
+          requested: reqQty,
+          available: avail,
+          drugName,
+          facilityId: targetHosp,
+        });
+        setStockErrorMsg(res.message || 'Insufficient stock to fulfill consumption log.');
+      }
+      setErrorModalOpen(true);
+    }
   };
 
   // Generate chart data for trends
@@ -111,7 +180,7 @@ export const HospitalConsumptionPage: React.FC = () => {
       header: 'Recorded Date',
       accessor: (r) => (
         <span className="font-mono text-xs text-slate-800">
-          {new Date(r.period_end).toLocaleDateString()}
+          {new Date(r.period_end || r.createdAt || Date.now()).toLocaleDateString()}
         </span>
       ),
     },
@@ -198,13 +267,23 @@ export const HospitalConsumptionPage: React.FC = () => {
         />
       </div>
 
-      {toastMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs">
+      {toast && (
+        <div
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs ${
+            toast.isError
+              ? 'bg-rose-50 border border-rose-300 text-rose-900'
+              : 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span>{toastMessage}</span>
+            {toast.isError ? (
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            )}
+            <span>{toast.message}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-emerald-700 underline">
+          <button onClick={() => setToast(null)} className="underline ml-4">
             Dismiss
           </button>
         </div>
@@ -296,11 +375,11 @@ export const HospitalConsumptionPage: React.FC = () => {
           icon={<Plus className="h-4 w-4" />}
           onClick={() => {
             setNewRecord({
-              hospital_id: selectedHospital === 'all' ? 'HOSP-001' : selectedHospital,
-              drug_id: drugs[1]?.drug_id || 'DRUG-002',
-              quantity_consumed: 68,
-              daily_avg_consumption: 68,
-              notes: 'Daily surgical intensive care unit log.',
+              hospital_id: selectedHospital === 'all' ? (hospitals[0]?.hospital_id || 'HOSP-001') : selectedHospital,
+              drug_id: drugs[0]?.drug_id || 'DRUG-001',
+              quantity_consumed: 50,
+              daily_avg_consumption: 50,
+              notes: 'ICU surgical intensive care unit log.',
             });
             setRecordModalOpen(true);
           }}
@@ -324,6 +403,79 @@ export const HospitalConsumptionPage: React.FC = () => {
           />
         </CardBody>
       </Card>
+
+      {/* System Error & Alert Dialog Box Modal */}
+      <Modal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        title={
+          errorModalType === 'auth'
+            ? '🔒 Access Denied'
+            : '⚠️ Insufficient Inventory Stock Alert'
+        }
+        subtitle={
+          errorModalType === 'auth'
+            ? 'Unauthorized Role Action'
+            : 'Requested consumption exceeds physical available stock'
+        }
+        maxWidth="sm"
+        footer={
+          <Button
+            variant={errorModalType === 'auth' ? 'outline' : 'primary'}
+            size="md"
+            onClick={() => setErrorModalOpen(false)}
+          >
+            {errorModalType === 'auth' ? 'Dismiss' : 'Dismiss & Adjust Quantity'}
+          </Button>
+        }
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 flex items-start gap-3">
+            {errorModalType === 'auth' ? (
+              <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <p className="font-bold text-xs">
+                {errorModalType === 'auth' ? 'Action Not Allowed' : 'Operation Blocked by System'}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-rose-800">
+                {errorModalType === 'auth'
+                  ? 'Not allowed as you are a non-authorized role.'
+                  : stockErrorMsg || 'Physical stock balance is insufficient to record this consumption request.'}
+              </p>
+            </div>
+          </div>
+
+          {errorModalType === 'stock' && stockDetails && (
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-3 text-slate-800">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Requested Units</span>
+                <p className="text-sm font-extrabold text-rose-600 mt-0.5">{stockDetails.requested} units</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Available Stock</span>
+                <p className="text-sm font-extrabold text-emerald-700 mt-0.5">{stockDetails.available} units</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Facility Location</span>
+                <p className="font-semibold mt-0.5">{stockDetails.facilityId}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Drug Formulation</span>
+                <p className="font-semibold mt-0.5">{stockDetails.drugName}</p>
+              </div>
+            </div>
+          )}
+
+          {errorModalType === 'stock' && (
+            <p className="text-[11px] text-slate-500 italic border-t border-slate-100 pt-2">
+              Note: Stock cannot be reduced below zero. Please adjust your requested consumption to be equal to or less than {stockDetails?.available ?? 0} units.
+            </p>
+          )}
+        </div>
+      </Modal>
 
       {/* Record Consumption Modal */}
       <Modal

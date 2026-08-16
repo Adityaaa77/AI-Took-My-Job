@@ -30,7 +30,7 @@ class MultiAgentOrchestrator:
     - CoordinatorAgent (Final Synthesis)
     """
 
-    def __init__(self, slm_provider: BaseSLMProvider, max_concurrency: int = 1):
+    def __init__(self, slm_provider: BaseSLMProvider, max_concurrency: int = 2):
         self.slm_provider = slm_provider
         self.max_concurrency = max_concurrency
 

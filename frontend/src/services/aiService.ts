@@ -32,8 +32,8 @@ export const aiService = {
   },
 
   async triggerAnalysis() {
-    const res = await ApiService.post<AIRecommendation>('/ai/analyze', {}, localRecommendations[0]);
-    return res;
+    // No fallbackData passed so real backend API errors surface clearly without mock fallback
+    return ApiService.post<AIRecommendation>('/ai/analyze', {});
   },
 
   async approveRecommendation(id: string) {
@@ -45,13 +45,12 @@ export const aiService = {
         approved_by: MOCK_USERS.admin,
         approved_at: new Date().toISOString(),
       };
-      return ApiService.patch<AIRecommendation>(
-        `/ai/recommendations/${id}/approve`,
-        {},
-        localRecommendations[idx]
-      );
     }
-    return { success: false, data: null as unknown as AIRecommendation };
+    return ApiService.patch<AIRecommendation>(
+      `/ai/recommendations/${id}/approve`,
+      {},
+      idx !== -1 ? localRecommendations[idx] : undefined
+    );
   },
 
   async rejectRecommendation(id: string, rejection_reason: string) {
@@ -62,12 +61,11 @@ export const aiService = {
         approval_status: 'rejected',
         rejection_reason,
       };
-      return ApiService.patch<AIRecommendation>(
-        `/ai/recommendations/${id}/reject`,
-        { rejection_reason },
-        localRecommendations[idx]
-      );
     }
-    return { success: false, data: null as unknown as AIRecommendation };
+    return ApiService.patch<AIRecommendation>(
+      `/ai/recommendations/${id}/reject`,
+      { rejection_reason },
+      idx !== -1 ? localRecommendations[idx] : undefined
+    );
   },
 };

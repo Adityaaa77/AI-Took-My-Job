@@ -7,7 +7,7 @@ let localConsumption: ConsumptionRecord[] = [...MOCK_CONSUMPTION];
 export const consumptionService = {
   async getAllConsumption(params?: { hospital_id?: string; is_anomaly?: boolean }) {
     let filtered = [...localConsumption];
-    if (params?.hospital_id) {
+    if (params?.hospital_id && params.hospital_id !== 'all') {
       filtered = filtered.filter((c) => c.hospital_id === params.hospital_id);
     }
     if (params?.is_anomaly !== undefined) {
@@ -18,17 +18,25 @@ export const consumptionService = {
       ? '?' +
         new URLSearchParams(
           Object.entries(params)
-            .filter(([, v]) => v !== undefined)
+            .filter(([, v]) => v !== undefined && v !== 'all')
             .map(([k, v]) => [k, String(v)])
         ).toString()
       : '';
 
-    return ApiService.get<ConsumptionRecord[]>(`/consumption${queryStr}`, filtered);
+    const res = await ApiService.get<ConsumptionRecord[]>(`/consumption${queryStr}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localConsumption = res.data;
+    }
+    return res;
   },
 
   async getConsumptionByHospital(hospital_id: string) {
     const filtered = localConsumption.filter((c) => c.hospital_id === hospital_id);
-    return ApiService.get<ConsumptionRecord[]>(`/consumption/hospital/${hospital_id}`, filtered);
+    const res = await ApiService.get<ConsumptionRecord[]>(`/consumption/hospital/${hospital_id}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localConsumption = res.data;
+    }
+    return res;
   },
 
   async recordConsumption(data: Partial<ConsumptionRecord>) {
@@ -57,7 +65,10 @@ export const consumptionService = {
       createdAt: new Date().toISOString(),
     };
 
-    localConsumption = [newRecord, ...localConsumption];
-    return ApiService.post<ConsumptionRecord>('/consumption', data, newRecord);
+    const res = await ApiService.post<ConsumptionRecord>('/consumption', data, newRecord);
+    if (res.success && res.data && !res.isMock) {
+      localConsumption = [res.data, ...localConsumption];
+    }
+    return res;
   },
 };

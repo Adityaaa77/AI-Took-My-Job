@@ -15,7 +15,7 @@ export const getAllInventory = async (
   try {
     const { location_id, location_type } = req.query;
     const filter: Record<string, unknown> = {};
-    if (location_id)   filter.location_id   = location_id;
+    if (location_id && location_id !== "all") filter.location_id = location_id;
     if (location_type) filter.location_type = location_type;
 
     const items = await Inventory.find(filter)

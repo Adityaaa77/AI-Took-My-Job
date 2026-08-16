@@ -4,7 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { Truck, Plus, CheckCircle2, Thermometer } from 'lucide-react';
+import { Truck, Plus, CheckCircle2, Thermometer, AlertTriangle, ExternalLink, Lock, MapPin, Clock, Building2, Boxes, FileText } from 'lucide-react';
 import { shipmentService } from '../services/shipmentService';
 import { drugService } from '../services/drugService';
 import type { Shipment, Drug, ShipmentStatus } from '../types';
@@ -25,10 +25,13 @@ export const ShipmentsPage: React.FC = () => {
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [detailShipment, setDetailShipment] = useState<Shipment | null>(null);
   const [updateStatus, setUpdateStatus] = useState<ShipmentStatus>('in_transit');
   const [trackingNote, setTrackingNote] = useState('');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; isError?: boolean } | null>(null);
 
   const [newShipment, setNewShipment] = useState<Partial<Shipment>>({
     drug_id: '',
@@ -62,28 +65,44 @@ export const ShipmentsPage: React.FC = () => {
     e.preventDefault();
     if (!newShipment.drug_id) return;
 
-    await shipmentService.createShipment(newShipment);
-    setCreateModalOpen(false);
-    setToastMessage('New logistics shipment created and registered for dispatch.');
-    loadData();
+    const res = await shipmentService.createShipment(newShipment);
+    if (res.success) {
+      setCreateModalOpen(false);
+      setToast({ message: 'New logistics shipment created and registered for dispatch.', isError: false });
+      loadData();
+    } else {
+      setToast({ message: res.message || 'Failed to create shipment', isError: true });
+    }
   };
 
   const handleStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
 
-    await shipmentService.updateShipmentStatus(
-      selectedShipment.shipment_id,
+    const targetId = selectedShipment.shipment_id || selectedShipment._id || '';
+    const res = await shipmentService.updateShipmentStatus(
+      targetId,
       updateStatus,
       trackingNote
     );
-    setStatusModalOpen(false);
-    setToastMessage(`Shipment ${selectedShipment.shipment_id} status updated to ${updateStatus.toUpperCase()}.`);
-    loadData();
+
+    if (res.success) {
+      setStatusModalOpen(false);
+      setToast({
+        message: `Shipment ${targetId} status updated to ${updateStatus.toUpperCase()}.`,
+        isError: false,
+      });
+      loadData();
+    } else {
+      setToast({
+        message: res.message || 'Failed to update shipment status',
+        isError: true,
+      });
+    }
   };
 
   const filteredShipments = shipments.filter((s) => {
-    const shipmentId = s.shipment_id.toLowerCase();
+    const shipmentId = (s.shipment_id || s._id || '').toLowerCase();
     const origin = s.origin_id.toLowerCase();
     const destination = s.destination_id.toLowerCase();
     const drugName =
@@ -105,9 +124,21 @@ export const ShipmentsPage: React.FC = () => {
       header: 'Shipment ID / Carrier',
       accessor: (s) => (
         <div>
-          <span className="font-mono font-bold text-xs text-slate-900">{s.shipment_id}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDetailShipment(s);
+              setDetailModalOpen(true);
+            }}
+            className="font-mono font-bold text-xs text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+            title="Click to view full end-to-end custody history"
+          >
+            <span>{s.shipment_id}</span>
+            <ExternalLink className="h-3 w-3 inline shrink-0" />
+          </button>
           <p className="text-xs text-slate-700 font-semibold mt-0.5">{s.carrier_name || 'Fleet Truck'}</p>
-          <span className="text-[10px] text-slate-400 font-mono">Trk: {s.tracking_number}</span>
+          <span className="text-[10px] text-slate-400 font-mono">Trk: {s.tracking_number || 'TRK-N/A'}</span>
         </div>
       ),
     },
@@ -169,7 +200,7 @@ export const ShipmentsPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="In-Transit Shipments"
-          value={shipments.filter((s) => s.status === 'in_transit').length}
+          value={shipments.filter((s) => s.status === 'in_transit' || s.status === 'dispatched').length}
           icon={<Truck className="h-5 w-5" />}
           subtitle="Active transport corridors"
           color="cyan"
@@ -183,7 +214,7 @@ export const ShipmentsPage: React.FC = () => {
         />
         <StatCard
           title="Delivered This Month"
-          value={shipments.filter((s) => s.status === 'delivered').length}
+          value={shipments.filter((s) => s.status === 'delivered' || s.status === 'received').length}
           icon={<CheckCircle2 className="h-5 w-5" />}
           subtitle="100% custody verified"
           color="emerald"
@@ -197,13 +228,23 @@ export const ShipmentsPage: React.FC = () => {
         />
       </div>
 
-      {toastMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs">
+      {toast && (
+        <div
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between shadow-2xs ${
+            toast.isError
+              ? 'bg-rose-50 border border-rose-300 text-rose-900'
+              : 'bg-emerald-50 border border-emerald-300 text-emerald-900'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <span>{toastMessage}</span>
+            {toast.isError ? (
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            )}
+            <span>{toast.message}</span>
           </div>
-          <button onClick={() => setToastMessage(null)} className="text-emerald-700 underline">
+          <button onClick={() => setToast(null)} className="underline ml-4">
             Dismiss
           </button>
         </div>
@@ -228,6 +269,7 @@ export const ShipmentsPage: React.FC = () => {
             <option value="dispatched">Dispatched</option>
             <option value="in_transit">In Transit</option>
             <option value="delivered">Delivered</option>
+            <option value="received">Received</option>
             <option value="delayed">Delayed</option>
           </select>
         </div>
@@ -238,7 +280,7 @@ export const ShipmentsPage: React.FC = () => {
           icon={<Plus className="h-4 w-4" />}
           onClick={() => {
             setNewShipment({
-              drug_id: drugs[0]?.drug_id || 'DRUG-001',
+              drug_id: drugs[0]?.drug_id || drugs[0]?._id || 'DRUG-001',
               quantity: 800,
               origin_id: 'WH-001 (CMSS North Hub Gurugram)',
               origin_type: 'warehouse',
@@ -259,7 +301,7 @@ export const ShipmentsPage: React.FC = () => {
       <Card>
         <CardHeader
           title="National Active Logistics & Reefer Corridors"
-          subtitle={`Tracking ${filteredShipments.length} live and historic movements`}
+          subtitle={`Tracking ${filteredShipments.length} live and historic movements (Click Shipment ID for full history)`}
         />
         <CardBody className="p-0">
           <Table
@@ -270,6 +312,211 @@ export const ShipmentsPage: React.FC = () => {
           />
         </CardBody>
       </Card>
+
+      {/* Full End-to-End Shipment History Modal */}
+      <Modal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        title={`End-to-End Custody History: ${detailShipment?.shipment_id}`}
+        subtitle="Complete lifecycle dossier from origin dock to destination receiving"
+        maxWidth="lg"
+        footer={
+          <Button variant="secondary" size="md" onClick={() => setDetailModalOpen(false)}>
+            Close Dossier
+          </Button>
+        }
+      >
+        {detailShipment && (
+          <div className="space-y-6 text-xs text-slate-800">
+            {/* Header Status Strip */}
+            <div className="bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-sm text-emerald-400">{detailShipment.shipment_id}</span>
+                  <StatusBadge status={detailShipment.status} size="sm" />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Carrier: <span className="text-white font-semibold">{detailShipment.carrier_name || 'Standard Fleet'}</span> • Tracking: <span className="font-mono text-slate-300">{detailShipment.tracking_number || 'N/A'}</span>
+                </p>
+              </div>
+
+              {detailShipment.blockchain_tx_hash && (
+                <div className="text-right">
+                  <span className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-1 rounded border border-emerald-500/30">
+                    <Lock className="h-3 w-3" />
+                    Ledger Verified
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Manifest & Tracking Description */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5 text-emerald-600" /> Operational Manifest & Tracking Description
+              </span>
+              <p className="text-xs font-semibold text-slate-800 leading-relaxed">
+                {detailShipment.tracking_note || 'Shipment registered at dispatch dock with continuous temperature data-logger.'}
+              </p>
+              {typeof detailShipment.drug_id !== 'string' && (detailShipment.drug_id?.description || detailShipment.drug_id?.category) && (
+                <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200/80 flex items-center gap-3">
+                  <span>Category: <strong className="text-slate-700">{detailShipment.drug_id.category}</strong></span>
+                  <span>Unit: <strong className="text-slate-700">{detailShipment.drug_id.unit}</strong></span>
+                  {detailShipment.drug_id.description && <span>Details: <strong className="text-slate-700">{detailShipment.drug_id.description}</strong></span>}
+                </div>
+              )}
+            </div>
+
+            {/* Route & Details Grid */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Building2 className="h-3 w-3 text-slate-500" /> Origin Facility
+                </span>
+                <p className="font-bold text-slate-900 mt-0.5">{detailShipment.origin_id}</p>
+                <span className="text-[10px] text-slate-500 uppercase">{detailShipment.origin_type}</span>
+              </div>
+
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Building2 className="h-3 w-3 text-slate-500" /> Destination Facility
+                </span>
+                <p className="font-bold text-slate-900 mt-0.5">{detailShipment.destination_id}</p>
+                <span className="text-[10px] text-slate-500 uppercase">{detailShipment.destination_type}</span>
+              </div>
+
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Boxes className="h-3 w-3 text-slate-500" /> Drug Formulation & Quantity
+                </span>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {typeof detailShipment.drug_id === 'string' ? detailShipment.drug_id : detailShipment.drug_id?.name}
+                </p>
+                <p className="text-slate-600 font-mono text-[11px] mt-0.5">
+                  {detailShipment.quantity.toLocaleString()} units
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-slate-500" /> Arrival Timestamps
+                </span>
+                <p className="font-semibold text-slate-800 mt-0.5">
+                  ETA: {new Date(detailShipment.estimated_arrival).toLocaleString()}
+                </p>
+                {detailShipment.actual_arrival && (
+                  <p className="font-bold text-emerald-700 text-[11px]">
+                    Actual: {new Date(detailShipment.actual_arrival).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Cold Chain IoT Telemetry */}
+            {detailShipment.temperature_log && detailShipment.temperature_log.length > 0 && (
+              <div className="bg-cyan-50/60 p-4 rounded-xl border border-cyan-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="h-4 w-4 text-cyan-700" />
+                    <span className="font-bold text-xs text-cyan-900">
+                      Cold-Chain IoT Continuous Feed (2°C - 8°C Requirement)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                    Normative
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+                  {detailShipment.temperature_log.map((temp, i) => (
+                    <div
+                      key={i}
+                      className="bg-white px-3 py-1.5 rounded-lg border border-cyan-100 text-center shrink-0 shadow-2xs"
+                    >
+                      <span className="text-[10px] text-slate-400">Log #{i + 1}</span>
+                      <p className="text-xs font-bold text-cyan-900">{temp}°C</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Milestones History Timeline */}
+            <div>
+              <h4 className="font-bold text-xs text-slate-900 mb-3 flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-emerald-600" />
+                Custody Handoff History & Operational Milestones
+              </h4>
+
+              <div className="space-y-2.5">
+                {detailShipment.milestones && detailShipment.milestones.length > 0 ? (
+                  detailShipment.milestones.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl border flex items-start justify-between gap-3 text-xs ${
+                        m.status === 'completed'
+                          ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                          : m.status === 'current'
+                          ? 'bg-blue-50/70 border-blue-300 text-blue-900 ring-2 ring-blue-500/20'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div
+                          className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            m.status === 'completed'
+                              ? 'bg-emerald-600 text-white'
+                              : m.status === 'current'
+                              ? 'bg-blue-600 text-white animate-pulse'
+                              : 'bg-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {m.status === 'completed' ? (
+                            <CheckCircle2 className="h-3 w-3" />
+                          ) : (
+                            <span className="text-[9px] font-bold">{idx + 1}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{m.stage}</p>
+                          <p className="text-[11px] text-slate-600 mt-0.5">{m.location}</p>
+                          {m.note && (
+                            <p className="text-[11px] text-emerald-950 bg-emerald-100/80 border border-emerald-300/70 px-2 py-1 rounded-md font-medium mt-1 leading-snug">
+                              💬 Update Note: &quot;{m.note}&quot;
+                            </p>
+                          )}
+                          {m.temperature && (
+                            <span className="inline-block mt-1 text-[10px] text-cyan-700 bg-cyan-100 px-1.5 py-0.2 rounded font-mono">
+                              Temp: {m.temperature}°C
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(m.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-xs">
+                    <p className="font-semibold">Shipment registered at dispatch dock.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Tracking note: {detailShipment.tracking_note || 'Order packaging initialized.'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Anchored Transaction Hash */}
+            {detailShipment.blockchain_tx_hash && (
+              <div className="p-3.5 bg-slate-900 text-white rounded-xl flex items-center justify-between gap-3 font-mono">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Anchored Transaction Hash</span>
+                  <p className="text-xs text-emerald-400 break-all">{detailShipment.blockchain_tx_hash}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Dispatch Modal */}
       <Modal
@@ -289,7 +536,7 @@ export const ShipmentsPage: React.FC = () => {
               required
             >
               {drugs.map((d) => (
-                <option key={d.drug_id} value={d.drug_id}>
+                <option key={d._id || d.drug_id} value={d.drug_id}>
                   {d.drug_id} • {d.name}
                 </option>
               ))}
@@ -374,6 +621,7 @@ export const ShipmentsPage: React.FC = () => {
               <option value="in_transit">In Transit (Highway Corridor)</option>
               <option value="delayed">Delayed (Traffic / Inspection)</option>
               <option value="delivered">Delivered (Move to Available Stock)</option>
+              <option value="received">Received (Verification Complete)</option>
             </select>
           </div>
 

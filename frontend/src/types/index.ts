@@ -188,6 +188,7 @@ export interface ShipmentMilestone {
   timestamp: string;
   status: 'completed' | 'current' | 'pending';
   temperature?: number;
+  note?: string;
 }
 
 export interface Shipment {
@@ -237,7 +238,7 @@ export type ReplenishmentStatus =
   | 'approved'
   | 'allocated'
   | 'dispatched'
-  | 'delivered'
+  | 'received'
   | 'rejected';
 
 export interface ReplenishmentRequest {
@@ -262,8 +263,11 @@ export interface ReplenishmentRequest {
 export type AlertType =
   | 'low_stock'
   | 'critical_stock'
+  | 'stockout'
+  | 'expiry_warning'
   | 'expiring_drug'
   | 'expired_drug'
+  | 'vendor_delay'
   | 'shipment_delay'
   | 'unusual_consumption'
   | 'pending_approval'

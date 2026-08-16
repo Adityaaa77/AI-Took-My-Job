@@ -111,15 +111,21 @@ export const InventoryPage: React.FC = () => {
       drugCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesFacility = facilityFilter === 'all' || item.location_id === facilityFilter;
+    const cleanFilter = facilityFilter.split(' ')[0].trim().toLowerCase();
+    const cleanLoc = location.split(' ')[0].trim().toLowerCase();
+    const matchesFacility =
+      facilityFilter === 'all' ||
+      cleanLoc === cleanFilter ||
+      location.toLowerCase().includes(facilityFilter.toLowerCase()) ||
+      facilityFilter.toLowerCase().includes(location.toLowerCase());
 
     return matchesSearch && matchesFacility;
   });
 
-  const totalStock = inventory.reduce((acc, i) => acc + i.available_stock, 0);
-  const totalReserved = inventory.reduce((acc, i) => acc + i.reserved_stock, 0);
-  const totalIncoming = inventory.reduce((acc, i) => acc + i.incoming_stock, 0);
-  const totalDeficits = inventory.filter((i) => i.available_stock < (i.drug_id?.min_safety_stock ?? 0)).length;
+  const totalStock = filteredInventory.reduce((acc, i) => acc + i.available_stock, 0);
+  const totalReserved = filteredInventory.reduce((acc, i) => acc + i.reserved_stock, 0);
+  const totalIncoming = filteredInventory.reduce((acc, i) => acc + i.incoming_stock, 0);
+  const totalDeficits = filteredInventory.filter((i) => i.available_stock < (i.drug_id?.min_safety_stock ?? 0)).length;
 
   const columns: Column<InventoryItem>[] = [
     {

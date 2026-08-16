@@ -65,13 +65,22 @@ export const AlertsPage: React.FC = () => {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case 'critical_stock':
+      case 'stockout':
       case 'low_stock':
         return <Boxes className="h-4 w-4 text-rose-600" />;
+      case 'expired_drug':
+      case 'expiring_drug':
+      case 'expiry_warning':
       case 'temperature_excursion':
       case 'quality_issue':
         return <ThermometerSnowflake className="h-4 w-4 text-amber-600" />;
       case 'unusual_consumption':
         return <AlertTriangle className="h-4 w-4 text-purple-600" />;
+      case 'vendor_delay':
+      case 'shipment_delay':
+        return <ShieldAlert className="h-4 w-4 text-cyan-600" />;
+      case 'pending_approval':
+        return <Bell className="h-4 w-4 text-amber-500" />;
       default:
         return <ShieldAlert className="h-4 w-4 text-blue-600" />;
     }

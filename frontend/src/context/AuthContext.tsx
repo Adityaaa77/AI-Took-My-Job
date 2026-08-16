@@ -54,13 +54,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. If user doesn't exist yet, automatically register in MongoDB
       if (res.isMock || !res.data?.token) {
-        const dbRole = mapToBackendRole(preferredRole);
         const name = email.split('@')[0].replace('.', ' ').replace(/^./, (c) => c.toUpperCase());
         const regRes = await ApiService.post<{ token: string; user: User }>('/auth/register', {
           name,
           email,
           password,
-          role: dbRole,
+          role: preferredRole,
         });
         if (!regRes.isMock && regRes.data?.token) {
           res = regRes;

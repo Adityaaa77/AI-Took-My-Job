@@ -8,9 +8,11 @@ import { ConsumptionRecord } from "../models/ConsumptionRecord.model.js";
 import { Vendor } from "../models/Vendor.model.js";
 import { PurchaseOrder } from "../models/PurchaseOrder.model.js";
 import { Shipment } from "../models/Shipment.model.js";
+import { ReplenishmentRequest } from "../models/ReplenishmentRequest.model.js";
 import { AIRecommendation } from "../models/AIRecommendation.model.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { AuthenticatedRequest } from "../types/index.js";
+import { logAuditEvent } from "../utils/auditLogger.js";
 
 // ─── Snapshot Builder ─────────────────────────────────────────────────────────
 // Assembles SupplyChainSnapshotPayload (mirrors Python Pydantic schema exactly)
@@ -74,7 +76,7 @@ async function buildSnapshot() {
         drug_id:        (drug?.drug_id as string) ?? "",
         manufacturer:   b.manufacturer,
         quantity:       b.quantity,
-        expiry_date:    b.expiry_date,
+        expiry_date:    b.expiry_date ? new Date(b.expiry_date as string | Date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
         quality_status: b.quality_status,
       })),
     };
@@ -82,11 +84,13 @@ async function buildSnapshot() {
 
   const consumptionList = consumptionRecords.map((c) => {
     const drug = c.drug_id as unknown as Record<string, unknown>;
+    const pStart = c.period_start ? new Date(c.period_start).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+    const pEnd = c.period_end ? new Date(c.period_end).toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
     return {
       hospital_id:           c.hospital_id,
       drug_id:               (drug?.drug_id as string) ?? "",
-      period_start:          c.period_start,
-      period_end:            c.period_end,
+      period_start:          pStart,
+      period_end:            pEnd,
       quantity_consumed:     c.quantity_consumed,
       daily_avg_consumption: c.daily_avg_consumption,
       is_anomaly:            c.is_anomaly,
@@ -159,7 +163,7 @@ export const triggerAnalysis = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
+    const aiServiceUrl = process.env.AI_SERVICE_URL ?? "http://127.0.0.1:8000";
 
     // Step 1: Build snapshot
     const snapshot = await buildSnapshot();
@@ -171,7 +175,7 @@ export const triggerAnalysis = async (
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(snapshot),
-        signal:  AbortSignal.timeout(60_000), // 60s timeout for SLM inference
+        signal:  AbortSignal.timeout(600_000), // 10 minute timeout for multi-agent SLM inference
       });
 
       if (!response.ok) {
@@ -264,14 +268,86 @@ export const approveRecommendation = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const rec = await AIRecommendation.findOneAndUpdate(
-      {
+    const existingRec = await AIRecommendation.findOne({
+      $or: [
+        { recommendation_id: req.params.id },
+        { _id: req.params.id.match(/^[a-f\d]{24}$/i) ? req.params.id : null },
+      ],
+    });
+
+    if (!existingRec) {
+      throw new AppError("Recommendation not found", 404);
+    }
+    if (existingRec.approval_status !== "pending") {
+      throw new AppError(`Recommendation already processed with status: '${existingRec.approval_status}'`, 400);
+    }
+
+    const actions = (existingRec.recommended_actions || []) as Array<Record<string, any>>;
+
+    // ─── Phase 1: Pre-Validation (Guarantees zero partial mutation on failure) ───
+    for (const act of actions) {
+      const actionType = act.action_type;
+      const drugTarget = act.target_drug_id;
+      const qty = Number(act.recommended_quantity || 0);
+
+      if (actionType === "no_action") continue;
+
+      const drugDoc = await Drug.findOne({
         $or: [
-          { recommendation_id: req.params.id },
-          { _id: req.params.id.match(/^[a-f\d]{24}$/i) ? req.params.id : null },
+          { drug_id: drugTarget },
+          { _id: /^[a-f\d]{24}$/i.test(drugTarget) ? drugTarget : null },
         ],
-        approval_status: "pending",
-      },
+      });
+
+      if (!drugDoc) {
+        throw new AppError(`Target drug '${drugTarget}' not found in catalog`, 404);
+      }
+
+      if (actionType === "redistribute") {
+        if (qty <= 0) {
+          throw new AppError(`Redistribution quantity must be greater than zero. Received: ${qty}`, 400);
+        }
+        const origId = String(act.source_location_id || "WH-001").split(" ")[0].trim();
+        const destId = String(act.destination_location_id || "").split(" ")[0].trim();
+
+        if (!destId) {
+          throw new AppError("Destination facility is required for redistribution", 400);
+        }
+        if (origId.toLowerCase() === destId.toLowerCase()) {
+          throw new AppError(`Source and destination facility cannot be identical ('${origId}')`, 400);
+        }
+
+        // Verify source facility stock balance before allowing dispatch
+        const sourceInv = await Inventory.findOne({ location_id: origId, drug_id: drugDoc._id });
+        const availStock = sourceInv ? sourceInv.available_stock : 0;
+
+        if (availStock < qty) {
+          throw new AppError(
+            `Insufficient available stock at source facility '${origId}' for '${drugDoc.name}'. Required: ${qty}, Available: ${availStock}. Operational execution aborted.`,
+            400
+          );
+        }
+      } else if (actionType === "procure") {
+        if (qty <= 0) {
+          throw new AppError(`Procurement quantity must be greater than zero. Received: ${qty}`, 400);
+        }
+      } else if (actionType === "expedite_shipment") {
+        const shp = await Shipment.findOne({
+          $or: [
+            { shipment_id: drugTarget },
+            { destination_id: { $regex: drugTarget, $options: "i" } },
+            { status: { $in: ["preparing", "dispatched", "in_transit", "delayed"] } },
+          ],
+        });
+        if (!shp) {
+          throw new AppError(`No active eligible shipment found to expedite for target '${drugTarget}'`, 404);
+        }
+      }
+    }
+
+    // ─── Phase 2: Atomic State Transition & Operational Mutations ──────────
+    const rec = await AIRecommendation.findOneAndUpdate(
+      { _id: existingRec._id, approval_status: "pending" },
       {
         $set: {
           approval_status: "approved",
@@ -281,7 +357,98 @@ export const approveRecommendation = async (
       },
       { new: true }
     );
-    if (!rec) throw new AppError("Pending recommendation not found", 404);
+
+    if (!rec) {
+      throw new AppError("Concurrent update detected; recommendation already processed", 400);
+    }
+
+    for (const act of actions) {
+      const actionType = act.action_type;
+      const drugTarget = act.target_drug_id;
+      const qty = Number(act.recommended_quantity || 0);
+
+      if (actionType === "no_action") continue;
+
+      const drugDoc = await Drug.findOne({
+        $or: [
+          { drug_id: drugTarget },
+          { _id: /^[a-f\d]{24}$/i.test(drugTarget) ? drugTarget : null },
+        ],
+      });
+
+      if (actionType === "redistribute" && drugDoc) {
+        const origId = String(act.source_location_id || "WH-001").split(" ")[0].trim();
+        const destId = String(act.destination_location_id || "").split(" ")[0].trim();
+
+        // Spawn a real Shipment for inter-facility redistribution
+        await Shipment.create({
+          origin_id: origId,
+          origin_type: origId.startsWith("WH") ? "warehouse" : "hospital",
+          destination_id: destId,
+          destination_type: destId.startsWith("WH") ? "warehouse" : "hospital",
+          drug_id: drugDoc._id,
+          quantity: qty,
+          status: "dispatched",
+          estimated_arrival: new Date(Date.now() + 2 * 86400000),
+          carrier_name: "AI-Approved Reefer Express",
+          tracking_number: `TRK-AI-${Math.floor(100000 + Math.random() * 900000)}`,
+          tracking_note: `AI redistribution recommendation approved by operator: ${act.reasoning}`,
+        });
+
+        // Increment incoming_stock at destination facility inventory
+        await Inventory.findOneAndUpdate(
+          { location_id: destId, drug_id: drugDoc._id },
+          {
+            $inc: { incoming_stock: qty },
+            $setOnInsert: {
+              location_type: destId.startsWith("WH") ? "warehouse" : "hospital",
+              available_stock: 0,
+              reserved_stock: 0,
+              batch_ids: [],
+            },
+          },
+          { upsert: true, new: true }
+        );
+      } else if (actionType === "procure" && drugDoc) {
+        const destId = String(act.destination_location_id || "HOSP-001").split(" ")[0].trim();
+
+        await ReplenishmentRequest.create({
+          hospital_id: destId,
+          drug_id: drugDoc._id,
+          requested_quantity: qty,
+          approved_quantity: qty,
+          urgency: act.priority === "critical" ? "critical" : "high",
+          status: "approved",
+          requested_by: req.user!.userId,
+          approved_by: req.user!.userId,
+          notes: `AI Procurement Recommendation Approved: ${act.reasoning}`,
+        });
+      } else if (actionType === "quarantine_batch" && drugDoc) {
+        await Batch.updateMany(
+          { drug_id: drugDoc._id, quality_status: { $ne: "failed" } },
+          { $set: { quality_status: "quarantine" } }
+        );
+      } else if (actionType === "expedite_shipment") {
+        await Shipment.updateMany(
+          { status: { $in: ["preparing", "dispatched", "in_transit", "delayed"] } },
+          { $set: { tracking_note: `[EXPEDITED VIA AI APPROVAL] ${act.reasoning}` } }
+        );
+      }
+    }
+
+    // ─── Phase 3: Audit Logging ────────────────────────────────────────────────
+    await logAuditEvent(
+      req,
+      "AI_RECOMMENDATION_APPROVED_AND_EXECUTED",
+      "AIRecommendation",
+      rec.recommendation_id,
+      {
+        overall_risk_level: rec.overall_risk_level,
+        executed_actions_count: actions.length,
+        approved_by: req.user!.userId,
+      }
+    );
+
     res.json({ success: true, data: rec });
   } catch (err) {
     next(err);

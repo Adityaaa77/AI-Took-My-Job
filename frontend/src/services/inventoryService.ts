@@ -24,7 +24,11 @@ export const inventoryService = {
         ).toString()
       : '';
 
-    return ApiService.get<InventoryItem[]>(`/inventory${queryStr}`, filtered);
+    const res = await ApiService.get<InventoryItem[]>(`/inventory${queryStr}`, filtered);
+    if (res.success && res.data && !res.isMock) {
+      localInventory = res.data;
+    }
+    return res;
   },
 
   async getLowStockItems() {
