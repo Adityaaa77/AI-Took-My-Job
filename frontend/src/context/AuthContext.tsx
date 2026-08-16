@@ -12,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   role: UserRole;
   isAuthenticated: boolean;
-  login: (email: string, role?: UserRole) => Promise<boolean>;
+  login: (email: string, password?: string, role?: UserRole) => Promise<boolean>;
   logout: () => void;
   switchRole: (newRole: UserRole) => void;
   token: string | null;
@@ -34,20 +34,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const login = async (email: string, preferredRole: UserRole = 'admin'): Promise<boolean> => {
+  const mapToBackendRole = (role: UserRole): 'admin' | 'warehouse_manager' | 'hospital_staff' | 'vendor' => {
+    if (role === 'procurement_officer') return 'warehouse_manager';
+    if (role === 'compliance_officer') return 'admin';
+    return role;
+  };
+
+  const login = async (
+    email: string,
+    password = 'Password123!',
+    preferredRole: UserRole = 'admin'
+  ): Promise<boolean> => {
     try {
-      const res = await ApiService.post<{ token: string; user: User }>('/auth/login', {
+      // 1. Try logging in to live backend
+      let res = await ApiService.post<{ token: string; user: User }>('/auth/login', {
         email,
-        password: 'Password123!',
+        password,
       });
+
+      // 2. If user doesn't exist yet, automatically register in MongoDB
+      if (res.isMock || !res.data?.token) {
+        const dbRole = mapToBackendRole(preferredRole);
+        const name = email.split('@')[0].replace('.', ' ').replace(/^./, (c) => c.toUpperCase());
+        const regRes = await ApiService.post<{ token: string; user: User }>('/auth/register', {
+          name,
+          email,
+          password,
+          role: dbRole,
+        });
+        if (!regRes.isMock && regRes.data?.token) {
+          res = regRes;
+        }
+      }
+
       if (!res.isMock && res.data?.token) {
         ApiService.setToken(res.data.token);
         setToken(res.data.token);
-        setUser(res.data.user);
+        const backendUser = {
+          ...res.data.user,
+          role: preferredRole, // preserve UI role
+        };
+        setUser(backendUser);
         return true;
       }
     } catch {
-      // Graceful fallback to mock profile
+      // Fall through to resilient mock mode
     }
 
     const targetUser = MOCK_USERS[preferredRole] || {

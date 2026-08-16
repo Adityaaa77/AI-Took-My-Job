@@ -24,11 +24,10 @@ const DrugSchema = new Schema<IDrug>(
   { timestamps: true }
 );
 
-DrugSchema.pre("validate", async function (next) {
+DrugSchema.pre("validate", async function () {
   if (!this.drug_id) {
     this.drug_id = await getNextId("drug", "DRUG");
   }
-  next();
 });
 
 DrugSchema.index({ name: "text", category: "text" });

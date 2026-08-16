@@ -100,8 +100,8 @@ export const getInventoryById = async (
 /**
  * POST /api/v1/inventory
  * Upserts: if a record for (location_id, drug_id) already exists, updates it.
- * Body: { location_id, location_type, drug_id (MongoDB _id), available_stock,
- *         reserved_stock?, incoming_stock? }
+ * Body: { location_id, location_type, drug_id (human-readable code OR MongoDB _id),
+ *         available_stock, reserved_stock?, incoming_stock? }
  * Roles: admin, warehouse_manager
  */
 export const upsertInventory = async (
@@ -125,11 +125,15 @@ export const upsertInventory = async (
         400
       );
 
-    const drug = await Drug.findById(drug_id);
+    // drug_id from the frontend may be the human-readable code (e.g. "DRUG-002")
+    // or the Mongo _id — accept either, same pattern as drug.controller.ts.
+    const drug = await Drug.findOne({
+      $or: [{ drug_id }, { _id: /^[a-f\d]{24}$/i.test(drug_id) ? drug_id : null }],
+    });
     if (!drug) throw new AppError("Drug not found", 404);
 
     const item = await Inventory.findOneAndUpdate(
-      { location_id, drug_id },
+      { location_id, drug_id: drug._id },
       {
         $set: {
           location_type,

@@ -37,11 +37,10 @@ const BatchSchema = new Schema<IBatch>(
   { timestamps: true }
 );
 
-BatchSchema.pre("validate", async function (next) {
+BatchSchema.pre("validate", async function () {
   if (!this.batch_id) {
     this.batch_id = await getNextId("batch", "BATCH");
   }
-  next();
 });
 
 BatchSchema.index({ drug_id: 1, location_id: 1 });

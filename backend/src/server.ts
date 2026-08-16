@@ -1,3 +1,11 @@
+import crypto from "node:crypto";
+
+// Polyfill Web Crypto API for older Node.js runtime environments
+if (!globalThis.crypto) {
+  // @ts-ignore
+  globalThis.crypto = crypto.webcrypto;
+}
+
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -5,6 +13,7 @@ import connectDB from "../config/db.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
 import authRoutes          from "./routes/auth.routes.js";
 import drugRoutes          from "./routes/drug.routes.js";
+import batchRoutes from "./routes/batch.routes.js";
 import hospitalRoutes      from "./routes/hospital.routes.js";
 import vendorRoutes        from "./routes/vendor.routes.js";
 import warehouseRoutes     from "./routes/warehouse.routes.js";
@@ -35,6 +44,7 @@ app.get("/", (_req: Request, res: Response) => {
 // ─── API Routes (mounted here in future stages) ───────────────────────────────
 app.use("/api/v1/auth",             authRoutes);
 app.use("/api/v1/drugs",            drugRoutes);
+app.use("/api/v1/batches",          batchRoutes);
 app.use("/api/v1/hospitals",        hospitalRoutes);
 app.use("/api/v1/vendors",          vendorRoutes);
 app.use("/api/v1/warehouses",       warehouseRoutes);

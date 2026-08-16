@@ -12,14 +12,14 @@ const router = Router();
 router
   .route("/")
   .get(protect, getAllShipments)
-  .post(protect, authorise("admin", "warehouse_manager"), createShipment);
+  .post(protect, authorise("admin", "warehouse_manager", "vendor"), createShipment);
 
 router.get("/:id", protect, getShipmentById);
 
 router.patch(
   "/:id/status",
   protect,
-  authorise("admin", "warehouse_manager"),
+  authorise("admin", "warehouse_manager", "vendor"),
   updateShipmentStatus
 );
 

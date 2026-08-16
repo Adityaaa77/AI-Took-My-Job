@@ -12,7 +12,7 @@ const router = Router();
 router
   .route("/")
   .get(protect, getAllOrders)
-  .post(protect, authorise("admin", "warehouse_manager"), createOrder);
+  .post(protect, authorise("admin", "procurement_officer"), createOrder);
 
 router.get("/:id", protect, getOrderById);
 
@@ -20,7 +20,7 @@ router.get("/:id", protect, getOrderById);
 router.patch(
   "/:id/status",
   protect,
-  authorise("admin", "warehouse_manager"),
+  authorise("admin", "procurement_officer"),
   updateOrderStatus
 );
 

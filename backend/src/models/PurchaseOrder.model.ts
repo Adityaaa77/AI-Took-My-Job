@@ -47,11 +47,10 @@ const PurchaseOrderSchema = new Schema<IPurchaseOrder>(
   { timestamps: true }
 );
 
-PurchaseOrderSchema.pre("validate", async function (next) {
+PurchaseOrderSchema.pre("validate", async function () {
   if (!this.order_id) {
     this.order_id = await getNextId("purchaseOrder", "PO");
   }
-  next();
 });
 
 PurchaseOrderSchema.index({ vendor_id: 1, status: 1 });

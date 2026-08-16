@@ -22,11 +22,10 @@ const WarehouseSchema = new Schema<IWarehouse>(
   { timestamps: true }
 );
 
-WarehouseSchema.pre("validate", async function (next) {
+WarehouseSchema.pre("validate", async function () {
   if (!this.warehouse_id) {
     this.warehouse_id = await getNextId("warehouse", "WH");
   }
-  next();
 });
 
 export const Warehouse = mongoose.model<IWarehouse>(

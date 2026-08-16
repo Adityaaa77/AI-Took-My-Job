@@ -13,12 +13,12 @@ const router = Router();
 router
   .route("/")
   .get(protect, getAllVendors)
-  .post(protect, authorise("admin"), createVendor);
+  .post(protect, authorise("admin", "procurement_officer"), createVendor);
 
 router
   .route("/:id")
   .get(protect, getVendorById)
-  .patch(protect, authorise("admin"), updateVendor)
+  .patch(protect, authorise("admin", "procurement_officer"), updateVendor)
   .delete(protect, authorise("admin"), deleteVendor);
 
 export default router;

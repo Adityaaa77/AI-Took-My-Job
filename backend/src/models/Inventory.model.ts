@@ -34,9 +34,8 @@ const InventorySchema = new Schema<IInventory>(
 // Enforce one inventory record per (drug, location) pair
 InventorySchema.index({ location_id: 1, drug_id: 1 }, { unique: true });
 
-InventorySchema.pre("save", function (next) {
+InventorySchema.pre("save", function () {
   this.last_updated = new Date();
-  next();
 });
 
 export const Inventory = mongoose.model<IInventory>(

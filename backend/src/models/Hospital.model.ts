@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { getNextId } from "./Counter.model.js";
 
-export type HospitalTier = "Primary" | "District" | "Tertiary";
+export type HospitalTier = "Tier-1" | "Tier-2" | "Tier-3";
 
 export interface IHospital extends Document {
   hospital_id: string;
@@ -20,7 +20,7 @@ const HospitalSchema = new Schema<IHospital>(
     name: { type: String, required: true, trim: true },
     tier: {
       type: String,
-      enum: ["Primary", "District", "Tertiary"],
+      enum: ["Tier-1", "Tier-2", "Tier-3"],
       required: true,
     },
     location_zone: { type: String, required: true, trim: true },
@@ -32,11 +32,10 @@ const HospitalSchema = new Schema<IHospital>(
   { timestamps: true }
 );
 
-HospitalSchema.pre("validate", async function (next) {
+HospitalSchema.pre("validate", async function () {
   if (!this.hospital_id) {
     this.hospital_id = await getNextId("hospital", "HOSP");
   }
-  next();
 });
 
 export const Hospital = mongoose.model<IHospital>("Hospital", HospitalSchema);

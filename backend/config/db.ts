@@ -1,3 +1,10 @@
+import crypto from "node:crypto";
+
+if (!globalThis.crypto) {
+  // @ts-ignore
+  globalThis.crypto = crypto.webcrypto;
+}
+
 import mongoose from "mongoose";
 
 const connectDB = async (): Promise<void> => {

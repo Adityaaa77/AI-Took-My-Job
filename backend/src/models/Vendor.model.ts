@@ -28,11 +28,10 @@ const VendorSchema = new Schema<IVendor>(
   { timestamps: true }
 );
 
-VendorSchema.pre("validate", async function (next) {
+VendorSchema.pre("validate", async function () {
   if (!this.vendor_id) {
     this.vendor_id = await getNextId("vendor", "VEND");
   }
-  next();
 });
 
 export const Vendor = mongoose.model<IVendor>("Vendor", VendorSchema);

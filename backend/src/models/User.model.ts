@@ -3,9 +3,11 @@ import bcrypt from "bcryptjs";
 
 export type UserRole =
   | "admin"
+  | "procurement_officer"
   | "warehouse_manager"
   | "hospital_staff"
-  | "vendor";
+  | "vendor"
+  | "compliance_officer";
 
 export type AssociatedEntityType = "hospital" | "warehouse" | "vendor";
 
@@ -33,7 +35,14 @@ const UserSchema = new Schema<IUser>(
     password_hash: { type: String, required: true },
     role: {
       type: String,
-      enum: ["admin", "warehouse_manager", "hospital_staff", "vendor"],
+      enum: [
+        "admin",
+        "procurement_officer",
+        "warehouse_manager",
+        "hospital_staff",
+        "vendor",
+        "compliance_officer",
+      ],
       required: true,
     },
     associated_entity_id: { type: String },
@@ -47,11 +56,10 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Hash password before saving
-UserSchema.pre("save", async function (next) {
-  if (!this.isModified("password_hash")) return next();
+UserSchema.pre("save", async function () {
+  if (!this.isModified("password_hash")) return;
   const salt = await bcrypt.genSalt(10);
   this.password_hash = await bcrypt.hash(this.password_hash, salt);
-  next();
 });
 
 UserSchema.methods.comparePassword = function (

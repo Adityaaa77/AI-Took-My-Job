@@ -56,11 +56,10 @@ const ShipmentSchema = new Schema<IShipment>(
   { timestamps: true }
 );
 
-ShipmentSchema.pre("validate", async function (next) {
+ShipmentSchema.pre("validate", async function () {
   if (!this.shipment_id) {
     this.shipment_id = await getNextId("shipment", "SHIP");
   }
-  next();
 });
 
 ShipmentSchema.index({ order_id: 1 });

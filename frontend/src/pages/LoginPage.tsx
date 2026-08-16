@@ -79,7 +79,7 @@ export const LoginPage: React.FC = () => {
       setEmail(mockUser.email);
     }
     setLoading(true);
-    await login(mockUser?.email || email, role);
+    await login(mockUser?.email || email, 'Password123!', role);
     setLoading(false);
     navigate('/');
   };
@@ -87,7 +87,7 @@ export const LoginPage: React.FC = () => {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await login(email, selectedRole);
+    await login(email, password || 'Password123!', selectedRole);
     setLoading(false);
     navigate('/');
   };
