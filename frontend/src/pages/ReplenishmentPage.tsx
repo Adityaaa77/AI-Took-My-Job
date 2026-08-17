@@ -4,7 +4,8 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, CheckCircle2, AlertTriangle, Truck, Camera, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, Plus, CheckCircle2, AlertTriangle, Truck, Camera, Sparkles, ExternalLink } from 'lucide-react';
 import { replenishmentService } from '../services/replenishmentService';
 import { drugService } from '../services/drugService';
 import { networkService } from '../services/networkService';
@@ -20,6 +21,7 @@ import { StatCard } from '../components/ui/StatCard';
 import { CartonOcrScannerModal, type OcrResultData } from '../components/common/CartonOcrScannerModal';
 
 export const ReplenishmentPage: React.FC = () => {
+  const navigate = useNavigate();
   const { role } = useAuth();
   const [requests, setRequests] = useState<ReplenishmentRequest[]>([]);
   const [drugs, setDrugs] = useState<Drug[]>([]);
@@ -123,12 +125,20 @@ export const ReplenishmentPage: React.FC = () => {
 
   const columns: Column<ReplenishmentRequest>[] = [
     {
-      header: 'Requisition ID',
+      header: 'Requisition ID & Tracking',
       accessor: (r) => (
         <div>
-          <span className="font-mono font-bold text-xs text-slate-900">{r.request_id}</span>
+          <button
+            type="button"
+            onClick={() => navigate(`/tracking?reqId=${r.request_id || r._id}`)}
+            className="font-mono font-bold text-xs text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+            title="Click to view full Supply Chain Tracking Pipeline"
+          >
+            <span>{r.request_id}</span>
+            <ExternalLink className="h-3 w-3 inline shrink-0" />
+          </button>
           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-            {new Date(r.createdAt || Date.now()).toLocaleDateString()}
+            {new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB')}
           </p>
         </div>
       ),

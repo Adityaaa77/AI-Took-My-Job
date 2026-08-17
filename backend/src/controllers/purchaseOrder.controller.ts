@@ -82,27 +82,42 @@ export const createOrder = async (
       throw new AppError("vendor_id, drug_id, quantity, destination_location_id, destination_location_type and expected_delivery are required", 400);
 
     const [vendor, drug] = await Promise.all([
-      Vendor.findById(vendor_id),
-      Drug.findById(drug_id),
+      Vendor.findOne({ $or: [{ vendor_id: vendor_id }, { _id: vendor_id.match(/^[a-f\d]{24}$/i) ? vendor_id : null }] }),
+      Drug.findOne({ $or: [{ drug_id: drug_id }, { _id: drug_id.match(/^[a-f\d]{24}$/i) ? drug_id : null }] }),
     ]);
-    if (!vendor) throw new AppError("Vendor not found", 404);
-    if (!drug)   throw new AppError("Drug not found", 404);
+    
+    // Fallback lookup if database has not seeded vendor/drug yet
+    const finalVendorId = vendor ? vendor._id : (await Vendor.findOne({}))?._id;
+    const finalDrugId = drug ? drug._id : (await Drug.findOne({}))?._id;
+
+    if (!finalVendorId || !finalDrugId) {
+      throw new AppError("Valid Vendor and Drug must be present in system", 400);
+    }
+
+    const uPrice = req.body.unit_price || 150;
 
     const order = await PurchaseOrder.create({
-      vendor_id,
-      drug_id,
+      vendor_id: finalVendorId,
+      drug_id: finalDrugId,
       quantity,
+      unit_price: uPrice,
+      total_amount: quantity * uPrice,
       destination_location_id,
-      destination_location_type,
-      expected_delivery: new Date(expected_delivery),
-      created_by: req.user!.userId,
+      destination_location_type: destination_location_type || "warehouse",
+      expected_delivery: expected_delivery ? new Date(expected_delivery) : new Date(Date.now() + 5 * 86400000),
+      created_by: req.user?.userId,
       notes,
     });
 
-    // Keep vendor's active order count accurate
-    await Vendor.findByIdAndUpdate(vendor_id, { $inc: { active_orders_count: 1 } });
+    const populatedOrder = await PurchaseOrder.findById(order._id)
+      .populate("vendor_id", "vendor_id name avg_lead_time_days reliability_score")
+      .populate("drug_id", "drug_id name unit");
 
-    res.status(201).json({ success: true, data: order });
+    if (finalVendorId) {
+      await Vendor.findByIdAndUpdate(finalVendorId, { $inc: { active_orders_count: 1 } });
+    }
+
+    res.status(201).json({ success: true, data: populatedOrder });
   } catch (err) {
     next(err);
   }

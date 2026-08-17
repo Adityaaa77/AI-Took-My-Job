@@ -57,7 +57,7 @@ export const Topbar: React.FC = () => {
       case '/network':
         return { title: 'Healthcare Network Directory', desc: 'Verified hospitals, regional warehouses, and certified pharmaceutical suppliers' };
       default:
-        return { title: 'Drug Supply Chain System', desc: 'SIH Problem Statement PSS04' };
+        return { title: 'Drug Supply Chain System', desc: 'National Health Command Center & AI Logistics' };
     }
   };
 
@@ -71,7 +71,7 @@ export const Topbar: React.FC = () => {
           <h2 className="text-lg font-bold text-slate-900 leading-none">{pageInfo.title}</h2>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
             <Zap className="h-3 w-3 text-emerald-600" />
-            PSS04
+            MoHFW
           </span>
         </div>
         <p className="text-xs text-slate-500 mt-1 hidden sm:block">{pageInfo.desc}</p>

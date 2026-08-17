@@ -105,7 +105,7 @@ export const LoginPage: React.FC = () => {
           DrugTrace AI Portal
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          Intelligent Drug Inventory & Supply Chain Tracking System (PSS04)
+          Intelligent Drug Inventory & Supply Chain Tracking System
         </p>
       </div>
 

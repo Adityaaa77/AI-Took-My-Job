@@ -28,7 +28,7 @@ export const AppLayout: React.FC = () => {
         <footer className="px-6 py-4 border-t border-slate-200 bg-white text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span>Drug Inventory & Supply Chain Tracking System (PSS04)</span>
+            <span>Drug Inventory & Supply Chain Tracking System</span>
           </div>
           <div className="flex items-center gap-4 text-slate-400">
             <span>AI Multi-Agent Intelligence Layer</span>

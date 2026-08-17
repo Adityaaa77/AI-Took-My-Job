@@ -79,8 +79,6 @@ export const Sidebar: React.FC = () => {
           name: 'IoT Telemetry Simulation',
           path: '/telemetry-simulation',
           icon: Activity,
-          badge: 'Stage 17',
-          badgeColor: 'bg-purple-100 text-purple-700 border border-purple-200',
         },
         {
           name: 'Alerts & Incidents',
@@ -104,7 +102,7 @@ export const Sidebar: React.FC = () => {
         </div>
         <div>
           <h1 className="font-bold text-white text-sm tracking-tight leading-none">DrugTrace AI</h1>
-          <p className="text-[11px] text-emerald-400 font-medium mt-1">SIH • PSS04 Tracking</p>
+          <p className="text-[11px] text-emerald-400 font-medium mt-1">National Health Supply Chain</p>
         </div>
       </div>
 

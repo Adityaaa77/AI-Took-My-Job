@@ -4,6 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Truck,
   Building2,
@@ -19,6 +20,7 @@ import {
   AlertTriangle,
   Clock,
   UserCheck,
+  Sparkles,
 } from 'lucide-react';
 import { shipmentService } from '../services/shipmentService';
 import { blockchainService } from '../services/blockchainService';
@@ -29,6 +31,8 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 
 export const SupplyChainTrackingPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const activeReqId = searchParams.get('reqId') || searchParams.get('search');
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
@@ -152,6 +156,26 @@ export const SupplyChainTrackingPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Dynamic Requisition Tracking Banner */}
+      {activeReqId && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl flex items-center justify-between shadow-2xs font-semibold text-xs">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="w-5 h-5 text-emerald-600" />
+            <div>
+              <span className="font-bold block text-emerald-950">
+                📍 End-to-End Tracking Pipeline Active for Requisition: {activeReqId}
+              </span>
+              <span className="text-[11px] text-emerald-700">
+                Viewing live multi-node custody tracking across Vendor ➔ PO ➔ Reefer Transit ➔ Warehouse ➔ Hospital ➔ Bedside.
+              </span>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-emerald-600 text-white rounded-full font-mono text-[10px] font-bold">
+            LIVE CUSTODY PIPELINE
+          </span>
+        </div>
+      )}
+
       {/* ─── Top Concept Banner ────────────────────────────────────────────── */}
       <div className="bg-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">

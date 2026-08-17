@@ -47,7 +47,7 @@ export const SevenRightsBanner: React.FC<{ compact?: boolean }> = ({ compact = f
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
             <p className="text-xs font-semibold text-slate-300">Closed-Loop AI + Blockchain</p>
-            <p className="text-[11px] text-emerald-400">SIH - Problem Statement PSS04</p>
+            <p className="text-[11px] text-emerald-400">MoHFW National Health Mission</p>
           </div>
         </div>
       </div>
