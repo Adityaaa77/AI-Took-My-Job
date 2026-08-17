@@ -27,6 +27,7 @@ import auditRoutes         from "./routes/audit.routes.js";
 import aiRoutes            from "./routes/ai.routes.js";
 import traceabilityRoutes from "./routes/traceabilityRoutes.js";
 import ocrRoutes           from "./routes/ocrRoutes.js";
+import telemetryRoutes     from "./routes/telemetry.routes.js";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use("/api/v1/audit-logs",       auditRoutes);
 app.use("/api/v1/ai",              aiRoutes);
 app.use("/api/v1/traceability",    traceabilityRoutes);
 app.use("/api/v1/ocr",             ocrRoutes);
+app.use("/api/v1/telemetry",       telemetryRoutes);
 
 // ─── 404 Fallback ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

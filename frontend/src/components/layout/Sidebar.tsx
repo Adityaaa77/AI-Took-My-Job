@@ -76,6 +76,13 @@ export const Sidebar: React.FC = () => {
           badgeColor: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
         },
         {
+          name: 'IoT Telemetry Simulation',
+          path: '/telemetry-simulation',
+          icon: Activity,
+          badge: 'Stage 17',
+          badgeColor: 'bg-purple-100 text-purple-700 border border-purple-200',
+        },
+        {
           name: 'Alerts & Incidents',
           path: '/alerts',
           icon: ShieldAlert,

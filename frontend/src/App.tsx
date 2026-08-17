@@ -26,6 +26,7 @@ import { AuditLogPage } from './pages/AuditLogPage';
 import { NetworkDirectoryPage } from './pages/NetworkDirectoryPage';
 import { BatchVerificationPage } from './pages/BatchVerificationPage';
 import { PublicVerificationCertificatePage } from './pages/PublicVerificationCertificatePage';
+import { TelemetrySimulationPage } from './pages/TelemetrySimulationPage';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
@@ -62,6 +63,7 @@ function App() {
               <Route path="blockchain-ledger" element={<BatchVerificationPage />} />
               <Route path="batch-verification" element={<BatchVerificationPage />} />
               <Route path="traceability" element={<BatchVerificationPage />} />
+              <Route path="telemetry-simulation" element={<TelemetrySimulationPage />} />
 
               {/* Core Inventory & Master Data */}
               <Route path="inventory" element={<InventoryPage />} />
