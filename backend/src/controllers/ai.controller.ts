@@ -411,17 +411,19 @@ export const approveRecommendation = async (
         );
       } else if (actionType === "procure" && drugDoc) {
         const destId = String(act.destination_location_id || "HOSP-001").split(" ")[0].trim();
+        const hospDoc = await Hospital.findOne({ hospital_id: destId });
 
         await ReplenishmentRequest.create({
           hospital_id: destId,
+          hospital_name: hospDoc?.name || destId,
           drug_id: drugDoc._id,
           requested_quantity: qty,
           approved_quantity: qty,
-          urgency: act.priority === "critical" ? "critical" : "high",
+          urgency: act.priority === "critical" ? "critical" : act.priority === "high" ? "urgent" : "standard",
           status: "approved",
           requested_by: req.user!.userId,
           approved_by: req.user!.userId,
-          notes: `AI Procurement Recommendation Approved: ${act.reasoning}`,
+          reason: `AI Procurement Recommendation Approved: ${act.reasoning}`,
         });
       } else if (actionType === "quarantine_batch" && drugDoc) {
         await Batch.updateMany(
