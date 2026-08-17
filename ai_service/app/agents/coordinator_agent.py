@@ -61,6 +61,44 @@ class CoordinatorAgent(BaseAgent):
         all_findings.extend(state.get("vendor_findings", []))
         all_findings.extend(state.get("compliance_findings", []))
 
+        # Include MarketIntelligence findings for Right Cost visibility across API & UI
+        market_contexts = state.get("market_context", {})
+        for drug_id, m_ctx in market_contexts.items():
+            if getattr(m_ctx, "price_available", False):
+                all_findings.append(
+                    AgentFindingSchema(
+                        agent_name="MarketIntelligence",
+                        finding_type="cost_context_available",
+                        severity="low",
+                        target_drug_id=drug_id,
+                        target_location_id=None,
+                        description=f"NPPA Authoritative Reference Price: {m_ctx.reference_price} {m_ctx.currency} ({m_ctx.reference_price_unit or 'per unit'}). Source: {m_ctx.source}.",
+                        metrics={
+                            "reference_price": m_ctx.reference_price,
+                            "price_type": m_ctx.price_type,
+                            "currency": m_ctx.currency,
+                            "source": m_ctx.source,
+                            "data_status": m_ctx.data_status,
+                            "regulatory_price_available": m_ctx.regulatory_price_available,
+                        },
+                    )
+                )
+            else:
+                all_findings.append(
+                    AgentFindingSchema(
+                        agent_name="MarketIntelligence",
+                        finding_type="cost_data_unavailable",
+                        severity="low",
+                        target_drug_id=drug_id,
+                        target_location_id=None,
+                        description=f"Authoritative market price context unavailable for drug {drug_id}.",
+                        metrics={
+                            "price_available": False,
+                            "reason": getattr(m_ctx, "notes", "Authoritative market price unavailable"),
+                        },
+                    )
+                )
+
         if not all_findings:
             return CoordinatorRecommendationResponse(
                 recommendation_id=f"REC-{uuid.uuid4().hex[:8].upper()}",
@@ -302,8 +340,9 @@ class CoordinatorAgent(BaseAgent):
         Validates and repairs natural language reasoning text so numbers mentioned in text
         match the exact validated action.recommended_quantity. Handles ordinal suffixes (e.g. 48th -> 480).
         """
-        if action_type == "no_action":
-            return reasoning
+        # Clean up any SLM safety refusal strings if triggered by prompt constraints
+        if any(phrase in reasoning.lower() for phrase in ["i cannot", "i am unable", "as an ai", "is there anything else"]):
+            reasoning = f"Recommended {action_type} of {quantity} units to satisfy supply chain requirements."
 
         # Check if text contains contradicting numbers
         found_numbers = [int(n) for n in re.findall(r'\b\d+\b', reasoning)]

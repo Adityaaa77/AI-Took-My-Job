@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Dict, Optional
+from typing import TypedDict, List, Dict, Optional, Any
 from app.schemas import SupplyChainSnapshotPayload, AgentFindingSchema, CoordinatorRecommendationResponse
 
 class SupplyChainState(TypedDict):
@@ -15,5 +15,6 @@ class SupplyChainState(TypedDict):
     vendor_findings: List[AgentFindingSchema]
     compliance_findings: List[AgentFindingSchema]
     coordinator_recommendation: Optional[CoordinatorRecommendationResponse]
+    market_context: Dict[str, Any]
     agent_statuses: Dict[str, str]
     agent_errors: Dict[str, Optional[str]]

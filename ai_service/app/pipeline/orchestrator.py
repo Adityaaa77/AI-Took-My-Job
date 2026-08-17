@@ -14,6 +14,8 @@ from app.pipeline.nodes import (
     run_coordinator_node,
 )
 
+from app.market_intelligence import MarketIntelligenceService
+
 logger = logging.getLogger(__name__)
 
 class MultiAgentOrchestrator:
@@ -30,9 +32,15 @@ class MultiAgentOrchestrator:
     - CoordinatorAgent (Final Synthesis)
     """
 
-    def __init__(self, slm_provider: BaseSLMProvider, max_concurrency: int = 2):
+    def __init__(
+        self,
+        slm_provider: BaseSLMProvider,
+        max_concurrency: int = 2,
+        market_service: Optional[MarketIntelligenceService] = None,
+    ):
         self.slm_provider = slm_provider
         self.max_concurrency = max_concurrency
+        self.market_service = market_service or MarketIntelligenceService()
 
     async def run(self, snapshot: SupplyChainSnapshotPayload) -> SupplyChainState:
         """
@@ -42,6 +50,15 @@ class MultiAgentOrchestrator:
         :param snapshot: Master operational supply chain snapshot payload.
         :return: SupplyChainState containing findings, statuses, errors, and coordinator_recommendation.
         """
+        # Fetch real-world market intelligence context for snapshot drugs
+        market_contexts: Dict[str, Any] = {}
+        for drug in snapshot.drugs:
+            try:
+                m_ctx = await self.market_service.get_drug_market_context(drug.drug_id, drug.name)
+                market_contexts[drug.drug_id] = m_ctx
+            except Exception as err:
+                logger.warning(f"Market intelligence lookup failed for drug {drug.drug_id}: {err}")
+
         # Initialize typed shared state
         state: SupplyChainState = {
             "snapshot": snapshot,
@@ -52,6 +69,7 @@ class MultiAgentOrchestrator:
             "vendor_findings": [],
             "compliance_findings": [],
             "coordinator_recommendation": None,
+            "market_context": market_contexts,
             "agent_statuses": {
                 "InventoryAgent": "pending",
                 "DemandAgent": "pending",
@@ -102,6 +120,7 @@ class MultiAgentOrchestrator:
             "vendor_findings": [],
             "compliance_findings": [],
             "coordinator_recommendation": None,
+            "market_context": market_contexts,
             "agent_statuses": dict(state["agent_statuses"]),
             "agent_errors": dict(state["agent_errors"]),
         }
