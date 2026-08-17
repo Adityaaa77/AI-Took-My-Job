@@ -20,6 +20,8 @@ export interface IReplenishmentRequest extends Document {
   approved_quantity?: number;
   urgency: UrgencyLevel;
   reason?: string;
+  attached_image?: string;
+  image_hash?: string;
   status: ReplenishmentStatus;
   allocated_from?: string;
   shipment_id?: Types.ObjectId;
@@ -43,6 +45,8 @@ const ReplenishmentRequestSchema = new Schema<IReplenishmentRequest>(
       default: "standard",
     },
     reason: { type: String, trim: true },
+    attached_image: { type: String },
+    image_hash: { type: String },
     status: {
       type: String,
       enum: ["pending", "approved", "allocated", "dispatched", "received", "rejected"],

@@ -69,9 +69,9 @@ export const Sidebar: React.FC = () => {
           badgeColor: 'bg-indigo-100 text-indigo-700 border border-indigo-200',
         },
         {
-          name: 'Blockchain Ledger',
-          path: '/blockchain-ledger',
-          icon: Lock,
+          name: 'Batch Verification & Provenance',
+          path: '/batch-verification',
+          icon: ShieldCheck,
           badge: 'Verified',
           badgeColor: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
         },

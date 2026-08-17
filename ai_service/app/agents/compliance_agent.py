@@ -89,6 +89,21 @@ class ComplianceAgent(BaseAgent):
                 is_expired = b.expiry_date < today
                 is_unsafe_status = b.quality_status in ["quarantine", "failed"]
 
+                # Perform deterministic blockchain traceability & provenance verification
+                from app.traceability.service import default_traceability_service
+                from app.traceability.schemas import BatchVerificationRequestSchema, OverallTrustStatus
+                traceability_res = default_traceability_service.verify_batch(
+                    BatchVerificationRequestSchema(batch_id=b.batch_id, drug_id=b.drug_id)
+                )
+
+                if (
+                    traceability_res.verification_status in [
+                        OverallTrustStatus.COUNTERFEIT_SUSPECTED,
+                        OverallTrustStatus.CONDITION_BREACH,
+                    ]
+                ):
+                    is_unsafe_status = True
+
                 if is_expired:
                     expired_batches.append(b)
                     non_compliant_qty += b.quantity

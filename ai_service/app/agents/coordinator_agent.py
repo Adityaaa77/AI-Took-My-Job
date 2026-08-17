@@ -274,6 +274,24 @@ class CoordinatorAgent(BaseAgent):
         """
         requires_human = False
 
+        # Safety Check: Inspect for provenance tampering or temperature breaches
+        safety_breach_findings = []
+        for f in all_findings:
+            f_desc = str(getattr(f, "description", "") or "").upper()
+            f_type = str(getattr(f, "finding_type", "") or "").upper()
+            if any(term in f_desc or term in f_type for term in ["PROVENANCE", "COUNTERFEIT", "CONDITION_BREACH", "TEMPERATURE_EXCURSION", "BATCH_COMPLIANCE_FAILED"]):
+                safety_breach_findings.append(f)
+
+        if safety_breach_findings:
+            requires_human = True
+            breach_desc = getattr(safety_breach_findings[0], "description", "Provenance/Condition Safety Breach Detected")
+            if action.action_type in ["redistribute", "procure"]:
+                action.recommended_quantity = 0
+                action.reasoning = (
+                    f"SAFETY BREACH DETECTED: {breach_desc} "
+                    "Automated redistribution/procurement clamped to 0 units pending human review."
+                )
+
         if action.action_type == "redistribute":
             dist_findings = [
                 f for f in all_findings 
@@ -384,6 +402,8 @@ class CoordinatorAgent(BaseAgent):
                 f_src = metrics.get("data_source", "LOCAL_HOSPITAL_DATA")
                 forecasting_clause = f"ML Predictive Forecast Signal: {f_trend} demand trend based on {f_src}.\n"
                 break
+
+        vendor_clause = f"Vendor Selection: {vendor_info}\n" if vendor_info else ""
 
         prompt = (
             f"Action Recommended: {action_type.upper()}\n"

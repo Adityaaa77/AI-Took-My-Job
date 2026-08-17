@@ -4,7 +4,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, CheckCircle2, AlertTriangle, Truck } from 'lucide-react';
+import { Building2, Plus, CheckCircle2, AlertTriangle, Truck, Camera, Sparkles } from 'lucide-react';
 import { replenishmentService } from '../services/replenishmentService';
 import { drugService } from '../services/drugService';
 import { networkService } from '../services/networkService';
@@ -17,12 +17,14 @@ import { StatusBadge, Badge } from '../components/ui/Badge';
 import { SearchBar } from '../components/ui/SearchBar';
 import { Modal } from '../components/ui/Modal';
 import { StatCard } from '../components/ui/StatCard';
+import { CartonOcrScannerModal, type OcrResultData } from '../components/common/CartonOcrScannerModal';
 
 export const ReplenishmentPage: React.FC = () => {
   const { role } = useAuth();
   const [requests, setRequests] = useState<ReplenishmentRequest[]>([]);
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [ocrModalOpen, setOcrModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -386,6 +388,21 @@ export const ReplenishmentPage: React.FC = () => {
         subtitle="Request emergency drug allocation from Central Medical Warehouses or Regional Surpluses"
         maxWidth="md"
       >
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-xs font-medium text-emerald-900">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span>Instant Zero-Typing Requisition via Computer Vision OCR</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOcrModalOpen(true)}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm flex items-center space-x-1"
+          >
+            <Camera className="w-3.5 h-3.5 mr-1" />
+            <span>Scan Carton (OCR)</span>
+          </button>
+        </div>
+
         <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 mb-1">Hospital Facility</label>
@@ -476,6 +493,35 @@ export const ReplenishmentPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <CartonOcrScannerModal
+        isOpen={ocrModalOpen}
+        onClose={() => setOcrModalOpen(false)}
+        onScanComplete={(ocrResult) => {
+          const imgToUse = (ocrResult as any).supabase_url || (ocrResult as any).attached_image || ocrResult.preview_url;
+
+          if (imgToUse) {
+            localStorage.setItem('last_uploaded_ocr_img', imgToUse);
+            localStorage.setItem(`ocr_img_${ocrResult.batch_id}`, imgToUse);
+            localStorage.setItem(`ocr_img_${ocrResult.drug_id}`, imgToUse);
+          }
+          if (ocrResult.image_hash) {
+            localStorage.setItem('last_uploaded_ocr_hash', ocrResult.image_hash);
+            localStorage.setItem(`ocr_hash_${ocrResult.batch_id}`, ocrResult.image_hash);
+          }
+
+          setNewRequest((prev) => ({
+            ...prev,
+            drug_id: ocrResult.drug_id,
+            attached_image: imgToUse,
+            image_hash: ocrResult.image_hash,
+            reason: `[AI OCR SCANNED CARTON: GTIN ${ocrResult.gtin} | Batch ${ocrResult.batch_id} | ImgHash: ${ocrResult.image_hash.slice(0, 12)}...] ${prev.reason || ''}`,
+          }));
+          setToast({
+            message: `✓ AI OCR Extracted: GTIN ${ocrResult.gtin} for ${ocrResult.drug_name} (Batch ${ocrResult.batch_id})`,
+          });
+        }}
+      />
     </div>
   );
 };

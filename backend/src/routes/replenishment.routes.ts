@@ -2,12 +2,15 @@ import { Router } from "express";
 import {
   getAllRequests,
   getRequestById,
+  getPublicRequestById,
   createRequest,
   updateRequestStatus,
 } from "../controllers/replenishment.controller.js";
 import { protect, authorise } from "../middleware/auth.middleware.js";
 
 const router = Router();
+
+router.get("/public/:id", getPublicRequestById);
 
 router
   .route("/")

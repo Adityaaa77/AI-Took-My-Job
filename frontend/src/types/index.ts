@@ -251,6 +251,8 @@ export interface ReplenishmentRequest {
   approved_quantity?: number;
   urgency: 'standard' | 'urgent' | 'critical';
   reason?: string;
+  attached_image?: string;
+  image_hash?: string;
   status: ReplenishmentStatus;
   allocated_from?: string;
   shipment_id?: string;

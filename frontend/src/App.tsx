@@ -24,6 +24,8 @@ import { ReplenishmentPage } from './pages/ReplenishmentPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { NetworkDirectoryPage } from './pages/NetworkDirectoryPage';
+import { BatchVerificationPage } from './pages/BatchVerificationPage';
+import { PublicVerificationCertificatePage } from './pages/PublicVerificationCertificatePage';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
@@ -32,8 +34,11 @@ function App() {
       <AuthProvider>
         <AlertProvider>
           <Routes>
-            {/* Public Authentication Route */}
+            {/* Public Authentication & QR Verification Certificate Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/verify" element={<PublicVerificationCertificatePage />} />
+            <Route path="/verify/:batchId" element={<PublicVerificationCertificatePage />} />
+            <Route path="/public-verify" element={<PublicVerificationCertificatePage />} />
 
             {/* Protected Application Routes wrapped in AppLayout Shell */}
             <Route
@@ -53,8 +58,10 @@ function App() {
               {/* Layer 2: AI Multi-Agent Decision Center */}
               <Route path="ai-decisions" element={<AIDecisionCenterPage />} />
 
-              {/* Layer 3: Blockchain Cryptographic Ledger */}
-              <Route path="blockchain-ledger" element={<BlockchainLedgerPage />} />
+              {/* Layer 3: Blockchain Cryptographic Ledger & Batch Verification */}
+              <Route path="blockchain-ledger" element={<BatchVerificationPage />} />
+              <Route path="batch-verification" element={<BatchVerificationPage />} />
+              <Route path="traceability" element={<BatchVerificationPage />} />
 
               {/* Core Inventory & Master Data */}
               <Route path="inventory" element={<InventoryPage />} />
