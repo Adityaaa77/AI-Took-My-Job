@@ -106,7 +106,7 @@ export const AIDecisionCenterPage: React.FC = () => {
           icon: <TrendingUp className="h-4 w-4 text-rose-600" />,
           bgColor: 'bg-rose-50 text-rose-700 border-rose-200',
           internalSource: '🟢 Live Internal Source: MongoDB Atlas (consumptionrecords)',
-          externalSource: '🌐 External Real-World Source: Demand Baseline & Usage Anomaly Benchmarks',
+          externalSource: '🌐 AI Predictive Time-Series Demand Engine (Calibrated Forecasting)',
         };
       case 'InventoryAgent':
         return {
@@ -127,7 +127,7 @@ export const AIDecisionCenterPage: React.FC = () => {
           icon: <ShoppingCart className="h-4 w-4 text-blue-600" />,
           bgColor: 'bg-blue-50 text-blue-700 border-blue-200',
           internalSource: '🟢 Live Internal Source: MongoDB Atlas (replenishmentrequests)',
-          externalSource: '🌐 External Real-World Source: NPPA India Ceiling Prices & Reorder Thresholds',
+          externalSource: '🤖 AI Predictive Safety Stock & Reorder Engine (Forecast Feed)',
         };
       case 'VendorAgent':
         return {

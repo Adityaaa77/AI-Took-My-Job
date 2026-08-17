@@ -156,7 +156,9 @@ class DemandAgent(BaseAgent):
                     "baseline_average": baseline_average,
                     "recent_quantity": recent_quantity,
                     "trend_percentage": trend_percentage,
-                    "is_spike": is_spike
+                    "is_spike": is_spike,
+                    "data_source": "LOCAL_HOSPITAL_DATA" if observation_count >= 6 else "EXTERNAL_REFERENCE_DATA",
+                    "forecast_trend": "INCREASING" if trend_percentage >= 10 else ("DECREASING" if trend_percentage <= -10 else "STABLE"),
                 }
                 
                 findings.append(finding)

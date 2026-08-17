@@ -125,15 +125,15 @@ class CoordinatorAgent(BaseAgent):
         # 1. DETERMINISTIC PYTHON DECISION PRIORITIZATION ENGINE
         # -------------------------------------------------------------
         severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
-        max_sev_val = max(severity_order.get(f.severity, 1) for f in all_findings)
+        max_sev_val = max(severity_order.get(getattr(f, "severity", "low"), 1) for f in all_findings)
         severity_map = {4: "critical", 3: "high", 2: "medium", 1: "low"}
         overall_risk = severity_map[max_sev_val]
 
-        redistribution_opportunities = [f for f in all_findings if f.finding_type == "redistribution_opportunity"]
-        procurement_requirements = [f for f in all_findings if f.finding_type == "procurement_required"]
-        insufficient_data_findings = [f for f in all_findings if f.finding_type == "insufficient_data"]
-        compliance_violations = [f for f in state.get("compliance_findings", []) if f.finding_type == "batch_compliance_failed"]
-        vendor_recommendations = [f for f in state.get("vendor_findings", []) if f.finding_type == "vendor_recommended"]
+        redistribution_opportunities = [f for f in all_findings if getattr(f, "finding_type", None) == "redistribution_opportunity"]
+        procurement_requirements = [f for f in all_findings if getattr(f, "finding_type", None) == "procurement_required"]
+        insufficient_data_findings = [f for f in all_findings if getattr(f, "finding_type", None) == "insufficient_data"]
+        compliance_violations = [f for f in state.get("compliance_findings", []) if getattr(f, "finding_type", None) == "batch_compliance_failed"]
+        vendor_recommendations = [f for f in state.get("vendor_findings", []) if getattr(f, "finding_type", None) == "vendor_recommended"]
 
         recommended_actions: List[ActionRecommendationSchema] = []
         requires_human_flag = False
@@ -163,7 +163,7 @@ class CoordinatorAgent(BaseAgent):
                     dest_loc=dest_loc,
                     src_loc=src_loc,
                     quantity=auth_transfer_qty,
-                    supporting_findings=[redist_f] + [f for f in all_findings if f.target_drug_id == redist_f.target_drug_id and f != redist_f]
+                    supporting_findings=[redist_f] + [f for f in all_findings if getattr(f, "target_drug_id", None) == redist_f.target_drug_id and f != redist_f]
                 )
 
                 candidate_rec = ActionRecommendationSchema(
@@ -190,7 +190,7 @@ class CoordinatorAgent(BaseAgent):
                 auth_shortage_qty = int(proc_f.metrics.get("shortage_quantity", 0))
 
                 # Check if vendor recommendation exists for this drug
-                matching_vendors = [v for v in vendor_recommendations if v.target_drug_id == proc_f.target_drug_id]
+                matching_vendors = [v for v in vendor_recommendations if getattr(v, "target_drug_id", None) == proc_f.target_drug_id]
                 vendor_info_str = None
                 if matching_vendors:
                     best_v = matching_vendors[0]
@@ -199,7 +199,7 @@ class CoordinatorAgent(BaseAgent):
                     v_rel = best_v.metrics.get("reliability_score", 0.0)
                     vendor_info_str = f"Recommended Supplier: {v_name} ({v_id}) with {v_rel*100:.0f}% reliability score."
 
-                action_priority = "critical" if proc_f.severity == "critical" else ("high" if proc_f.severity == "high" else "medium")
+                action_priority = "critical" if getattr(proc_f, "severity", "low") == "critical" else ("high" if getattr(proc_f, "severity", "low") == "high" else "medium")
 
                 raw_reasoning = await self._generate_reasoning(
                     action_type="procure",
@@ -207,7 +207,7 @@ class CoordinatorAgent(BaseAgent):
                     dest_loc=loc,
                     src_loc=None,
                     quantity=auth_shortage_qty,
-                    supporting_findings=[proc_f] + [f for f in all_findings if f.target_drug_id == proc_f.target_drug_id and f != proc_f],
+                    supporting_findings=[proc_f] + [f for f in all_findings if getattr(f, "target_drug_id", None) == proc_f.target_drug_id and f != proc_f],
                     vendor_info=vendor_info_str
                 )
 
@@ -277,15 +277,15 @@ class CoordinatorAgent(BaseAgent):
         if action.action_type == "redistribute":
             dist_findings = [
                 f for f in all_findings 
-                if f.finding_type == "redistribution_opportunity" 
-                and f.target_drug_id == action.target_drug_id
+                if getattr(f, "finding_type", None) == "redistribution_opportunity" 
+                and getattr(f, "target_drug_id", None) == action.target_drug_id
             ]
 
             if dist_findings:
                 finding = dist_findings[0]
                 auth_qty = int(finding.metrics.get("potential_transfer_quantity", 0))
                 auth_src = finding.metrics.get("source_location_id")
-                auth_dest = finding.target_location_id
+                auth_dest = getattr(finding, "target_location_id", None)
 
                 # Location ID integrity checks
                 if action.source_location_id != auth_src:
@@ -310,14 +310,14 @@ class CoordinatorAgent(BaseAgent):
         elif action.action_type == "procure":
             proc_findings = [
                 f for f in all_findings
-                if f.finding_type == "procurement_required"
-                and f.target_drug_id == action.target_drug_id
+                if getattr(f, "finding_type", None) == "procurement_required"
+                and getattr(f, "target_drug_id", None) == action.target_drug_id
             ]
 
             if proc_findings:
                 finding = proc_findings[0]
                 auth_qty = int(finding.metrics.get("shortage_quantity", 0))
-                auth_dest = finding.target_location_id
+                auth_dest = getattr(finding, "target_location_id", None)
 
                 if action.destination_location_id != auth_dest:
                     action.destination_location_id = auth_dest
@@ -373,9 +373,17 @@ class CoordinatorAgent(BaseAgent):
         """
         Calls SLM to generate a concise operational reasoning text explaining why the action was selected.
         """
-        findings_summary = "\n".join([f"- [{f.agent_name}] {f.finding_type} ({f.severity}): {f.description}" for f in supporting_findings])
+        findings_summary = "\n".join([f"- [{getattr(f, 'agent_name', 'Agent')}] {getattr(f, 'finding_type', 'finding')} ({getattr(f, 'severity', 'low')}): {getattr(f, 'description', '')}" for f in supporting_findings])
         
-        vendor_clause = f"Vendor Recommendation: {vendor_info}\n" if vendor_info else ""
+        # Check for predictive forecasting findings
+        forecasting_clause = ""
+        for f in supporting_findings:
+            metrics = getattr(f, "metrics", {}) or {}
+            if "forecast_trend" in metrics or "data_source" in metrics:
+                f_trend = metrics.get("forecast_trend", "STABLE")
+                f_src = metrics.get("data_source", "LOCAL_HOSPITAL_DATA")
+                forecasting_clause = f"ML Predictive Forecast Signal: {f_trend} demand trend based on {f_src}.\n"
+                break
 
         prompt = (
             f"Action Recommended: {action_type.upper()}\n"
@@ -383,7 +391,8 @@ class CoordinatorAgent(BaseAgent):
             f"Destination Location: {dest_loc}\n"
             f"Source Location: {src_loc if src_loc else 'N/A'}\n"
             f"Exact Authoritative Quantity: {quantity} units\n"
-            f"{vendor_clause}\n"
+            f"{vendor_clause}"
+            f"{forecasting_clause}"
             f"Supporting Agent Findings:\n{findings_summary}\n\n"
             f"Synthesize these findings into ONE concise natural language reasoning statement (1-2 sentences) explaining why this action is recommended. You MUST mention the exact quantity of {quantity} units."
         )

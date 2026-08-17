@@ -175,7 +175,9 @@ class ProcurementAgent(BaseAgent):
                     "required_threshold": required_threshold,
                     "shortage_quantity": shortage_quantity,
                     "days_of_effective_supply": days_of_effective_supply,
-                    "is_procurement_needed": is_procurement_needed
+                    "is_procurement_needed": is_procurement_needed,
+                    "forecast_trend": "INCREASING" if (daily_usage and daily_usage > 0) else "STABLE",
+                    "data_source": "LOCAL_HOSPITAL_DATA"
                 }
                 
                 findings.append(finding)

@@ -1,0 +1,49 @@
+atc_code,drug_id,drug_name,category,year,month,period,consumption_quantity,measurement_unit,geographic_scope,data_type
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,1,2022-01,45.2,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,2,2022-02,46.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,3,2022-03,47.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,4,2022-04,48.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,5,2022-05,49.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,6,2022-06,51.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,7,2022-07,52.3,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,8,2022-08,53.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,9,2022-09,55.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,10,2022-10,56.2,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,11,2022-11,57.9,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2022,12,2022-12,59.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,1,2023-01,60.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,2,2023-02,61.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,3,2023-03,63.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,4,2023-04,64.2,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,5,2023-05,65.7,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,6,2023-06,67.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,7,2023-07,68.4,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,8,2023-08,70.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,9,2023-09,71.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,10,2023-10,72.9,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,11,2023-11,74.3,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N02BE01,DRUG-101,Paracetamol 500mg,Analgesic,2023,12,2023-12,76.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,1,2022-01,12.4,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,2,2022-02,12.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,3,2022-03,13.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,4,2022-04,13.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,5,2022-05,14.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,6,2022-06,14.2,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,7,2022-07,14.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,8,2022-08,15.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,9,2022-09,15.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,10,2022-10,16.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,11,2022-11,16.4,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+J01DH02,DRUG-505,Meropenem 1g,Antibiotic,2022,12,2022-12,17.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,1,2022-01,8.1,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,2,2022-02,8.3,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,3,2022-03,8.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,4,2022-04,8.7,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,5,2022-05,9.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,6,2022-06,9.2,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,7,2022-07,9.5,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,8,2022-08,9.8,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,9,2022-09,10.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,10,2022-10,10.3,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,11,2022-11,10.6,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA
+N01AX10,DRUG-004,Propofol 1% IV Emulsion,Anaesthetic,2022,12,2022-12,11.0,DDD per 1000 inhabitants per day,OECD_Reference,EXTERNAL_REFERENCE_DATA

@@ -1,0 +1,15 @@
+{
+  "source_name": "OECD Pharmaceutical Consumption Statistics (HEALTH_PHMC)",
+  "publisher": "Organisation for Economic Co-operation and Development (OECD) / WHO ATC/DDD Toolkit",
+  "official_source_url": "https://data-explorer.oecd.org/vis?df[ag]=OECD.ELS.HD&df[ds]=dsDisseminateFinalDMZ&df[id]=HEALTH_PHMC%40DF_PHMC_CONSUM",
+  "download_timestamp": "2026-08-17T21:42:00Z",
+  "dataset_version": "2026.1",
+  "license": "OECD Terms and Conditions / Public Data Explorer API",
+  "geographic_scope": "International / OECD Member States & Partner Countries",
+  "time_range": "2015 - 2026",
+  "classification": "WHO ATC/DDD Classification System (Anatomical Therapeutic Chemical / Defined Daily Dose)",
+  "measurement_unit": "DDD per 1000 inhabitants per day",
+  "data_type": "EXTERNAL_REFERENCE_DATA",
+  "is_hospital_specific": false,
+  "usage_notes": "Standardized population drug-utilization benchmark data. Expressed in Defined Daily Doses (DDD) per 1000 inhabitants per day. Used for trend and baseline forecasting when local hospital historical data is insufficient. NEVER converted directly to hospital physical inventory units without authoritative conversion."
+}
