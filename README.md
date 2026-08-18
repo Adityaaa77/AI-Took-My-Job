@@ -262,7 +262,7 @@ We are proud to present **DrugTrace AI**, developed by a dedicated team of engin
 
 | Contributor Name | GitHub Handle | Project Role |
 | :--- | :--- | :--- |
-| **Omkar Raut** *(Lead)* | [`@omkar454`](https://github.com/omkar454) | Lead Full-Stack Architect, AI Microservices & ML Risk Engine |
+| **Omkar Raut** | [`@omkar454`](https://github.com/omkar454) | Full-Stack Architect, AI Microservices & ML Risk Engine |
 | **Aditya Rajpal** | [`@Adityaaa777`](https://github.com/Adityaaa777) | System Architecture & Backend Services |
 | **Gunjan Shambwani** | [`@gunjan555`](https://github.com/gunjan555) | Frontend Engineering & UX Design |
 | **Arpita Singh** | [`@ArpitaSingh257`](https://github.com/ArpitaSingh257) | Blockchain DLT & Security Audit |
